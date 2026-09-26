@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>0.4.0</Version>
-    <AssemblyVersion>0.4.0</AssemblyVersion>
-    <FileVersion>0.4.0</FileVersion>
+    <Version>0.5.0</Version>
+    <AssemblyVersion>0.5.0</AssemblyVersion>
+    <FileVersion>0.5.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
@@ -36,5 +36,9 @@
          OpenXR-Schicht ihre Action Sets angehaengt hat (Handbuch 2). -->
     <Reference Include="Unity.InputSystem" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.InputSystem.dll" Private="false" />
     <Reference Include="Unity.XR.OpenXR" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.XR.OpenXR.dll" Private="false" />
+    <!-- 0.5.0: Zaehler auf PlayerCameraController (Handbuch 2.5). -->
+    <Reference Include="Il2CppPWS" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2CppPWS.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GamePath)\MelonLoader\net6\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Common.dll" Private="false" />
   </ItemGroup>
 </Project>

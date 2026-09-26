@@ -36,9 +36,27 @@
 //     eine Momentaufnahme). Gemessen in OnLateUpdate, hinter den
 //     Update-Schreibern des Spiels. Fenster 30 s: erst Kopf, dann Maus bewegen.
 //     Angekert an Camera.main (Tag MainCamera), nicht an Knotennamen.
+//
+// 0.4.0 hat gezeigt: Maus-Yaw auf HeadTurn.y, Pitch auf PlayerCamera.x, ein
+// Spielschreiber zwischen OnUpdate und OnLateUpdate (Handbuch 2.4). Statisch
+// ist PlayerCameraController.UpdateRotation aus PhysicalCharacterController.Update
+// der Kandidat (Handbuch 2.5). 0.5.0 schreibt weiter NICHTS und misst im
+// F9-Fenster, einmal pro Sekunde, alles in EINER Zeile desselben Frames:
+//   - HeadTurn.y / PlayerCamera.x in OnUpdate (U), vor dem ersten und nach dem
+//     letzten UpdateRotation (pre/post), in OnLateUpdate (L) und in
+//     Application.onBeforeRender (R). Aendert sich L -> R, schreibt danach
+//     noch jemand.
+//   - Aufrufe von UpdateRotation und UpdateLookDirection: im Messframe und
+//     pro Sekunde. Ein installierter Patch heisst nicht, dass er feuert.
+//   - einmal zu Fensterbeginn: Zahl der PlayerCameraController, ob
+//     m_horizontalLook/m_verticalLook dieselben Objekte wie Camera.main und
+//     ihr Elternknoten sind, m_rigTransform, m_camera.
+//   - im XR-Bericht: Tracking-Ursprung des XRInputSubsystem.
 
 using System.Runtime.InteropServices;
 using System.Text;
+using HarmonyLib;
+using Il2CppPWS;
 using MelonLoader;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -51,7 +69,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.4.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.5.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -70,7 +88,16 @@ public sealed class XRStart : MelonMod
 
     // F9: Referenzlauf OHNE XR. Misst das Instrument die Mausdrehung ueberhaupt?
     private const float ReferenceSeconds = 20f;
-    private float refStart, refUntil, nextRefUpdate, nextRefLate;
+    private float refStart, refUntil, nextRefUpdate;
+
+    // Messframe des F9-Fensters. Die Patches schreiben hinein, ausgegeben wird
+    // im naechsten OnUpdate, wenn alle fuenf Punkte des Frames gelesen sind.
+    private static int sampleFrame = -1;
+    private static bool sampleOpen;
+    private static string sU = "", sPre = "-", sPost = "-", sL = "-", sR = "-", sLook = "";
+    private static int sRotCalls;
+    private static int rotCalls, lookCalls, windowFrame;
+    private bool beforeRenderHooked;
     private float nextXrUpdate;
     private float reportUntil;
     private float nextReport;
@@ -84,10 +111,151 @@ public sealed class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F9 = 20 s Kopfmessung ohne XR");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F9 = 20 s Kopfmessung (mit oder ohne XR)");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
+        PatchCameraController();
+    }
+
+    // Nur Zaehler und Lesungen, kein Eingriff: Prefix gibt nichts zurueck,
+    // die Originalmethode laeuft immer.
+    private void PatchCameraController()
+    {
+        PatchOne(nameof(PlayerCameraController.UpdateRotation), nameof(RotationPrefix), nameof(RotationPostfix));
+        PatchOne(nameof(PlayerCameraController.UpdateLookDirection), nameof(LookPrefix), null);
+    }
+
+    private void PatchOne(string method, string prefix, string? postfix)
+    {
+        try
+        {
+            var target = AccessTools.Method(typeof(PlayerCameraController), method);
+            if (target == null) { LoggerInstance.Error($"Patch {method}: Methode nicht gefunden"); return; }
+            HarmonyInstance.Patch(target,
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(XRStart), prefix)),
+                postfix: postfix == null ? null : new HarmonyMethod(AccessTools.Method(typeof(XRStart), postfix)));
+            LoggerInstance.Msg($"Patch {method}: installiert (ob er feuert, zeigt der Zaehler)");
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Error($"Patch {method}: " + e);
+        }
+    }
+
+    private static void RotationPrefix(PlayerCameraController __instance)
+    {
+        rotCalls++;
+        if (!sampleOpen || Time.frameCount != sampleFrame) return;
+        sRotCalls++;
+        if (sRotCalls == 1) sPre = ReadLook(__instance);
+    }
+
+    private static void RotationPostfix(PlayerCameraController __instance)
+    {
+        if (!sampleOpen || Time.frameCount != sampleFrame) return;
+        sPost = ReadLook(__instance);
+    }
+
+    private static void LookPrefix(float horizontalLook, float verticalLook)
+    {
+        lookCalls++;
+        if (sampleOpen && Time.frameCount == sampleFrame)
+            sLook += $" args=({horizontalLook:F2},{verticalLook:F2})";
+    }
+
+    // Die Knoten, die der Controller selbst haelt - nicht die von Camera.main.
+    // Ob es dieselben sind, meldet ReportController zu Fensterbeginn.
+    private static string ReadLook(PlayerCameraController c)
+    {
+        try
+        {
+            var h = c.m_horizontalLook;
+            var v = c.m_verticalLook;
+            return $"y={(h == null ? "null" : h.localEulerAngles.y.ToString("F1"))} x={(v == null ? "null" : v.localEulerAngles.x.ToString("F1"))}";
+        }
+        catch (Exception e) { return "Lesefehler " + e.GetType().Name; }
+    }
+
+    // Dieselben zwei Winkel, angekert an Camera.main: Kamera.x und Eltern.y.
+    private static string ReadHead()
+    {
+        try
+        {
+            var cam = Camera.main;
+            if (cam == null) return "Camera.main=null";
+            var t = cam.transform;
+            var p = t.parent;
+            return $"y={(p == null ? "kein Eltern" : p.localEulerAngles.y.ToString("F1"))} x={t.localEulerAngles.x:F1}";
+        }
+        catch (Exception e) { return "Lesefehler " + e.GetType().Name; }
+    }
+
+    private void HookBeforeRender()
+    {
+        if (beforeRenderHooked) return;
+        try
+        {
+            Application.add_onBeforeRender(new System.Action(OnBeforeRender));
+            beforeRenderHooked = true;
+            LoggerInstance.Msg("onBeforeRender: angemeldet");
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Error("onBeforeRender: nicht angemeldet - " + e);
+        }
+    }
+
+    private static void OnBeforeRender()
+    {
+        // Nur der erste Aufruf des Messframes: das ist der Stand, mit dem
+        // gerendert wird.
+        if (sampleOpen && Time.frameCount == sampleFrame && sR == "-")
+            sR = ReadHead();
+    }
+
+    // Einmal zu Fensterbeginn: wie viele Controller, und halten sie dieselben
+    // Knoten wie Camera.main?
+    private void ReportController()
+    {
+        try
+        {
+            var all = UnityEngine.Object.FindObjectsOfType<PlayerCameraController>();
+            var cam = Camera.main;
+            LoggerInstance.Msg($"PlayerCameraController: {all.Length} aktiv, Camera.main={(cam == null ? "null" : cam.name)}");
+            for (int i = 0; i < all.Length; i++)
+            {
+                var c = all[i];
+                var h = c.m_horizontalLook;
+                var v = c.m_verticalLook;
+                var rig = c.m_rigTransform;
+                var cc = c.m_camera;
+                bool vIsCam = cam != null && v != null && v.Pointer == cam.transform.Pointer;
+                bool hIsParent = cam != null && h != null && cam.transform.parent != null && h.Pointer == cam.transform.parent.Pointer;
+                bool camIsMain = cam != null && cc != null && cc.Pointer == cam.Pointer;
+                LoggerInstance.Msg($"  [{i}] '{c.gameObject.name}' enabled={c.enabled} | m_horizontalLook='{Name(h)}' ==Camera.main.parent: {hIsParent} | " +
+                    $"m_verticalLook='{Name(v)}' ==Camera.main: {vIsCam} | m_rigTransform='{Name(rig)}' | m_camera='{Name(cc)}' ==Camera.main: {camIsMain} | " +
+                    $"HorizontalLookRotation={c.HorizontalLookRotation:F1} VerticalLookRotation={c.VerticalLookRotation:F1}");
+            }
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Error("PlayerCameraController: Lesefehler " + e);
+        }
+    }
+
+    private static string Name(Component? c) => c == null ? "null" : c.name;
+
+    // Gibt den abgeschlossenen Messframe aus: eine Zeile, ein Frame.
+    private void FlushSample()
+    {
+        if (!sampleOpen || Time.frameCount == sampleFrame) return;
+        sampleOpen = false;
+        int frames = Time.frameCount - windowFrame;
+        LoggerInstance.Msg($"ref t+{Time.unscaledTime - refStart:F0}s KOPF f={sampleFrame} XR={(started ? "an" : "aus")} | U {sU} | pre {sPre} | post {sPost} | L {sL} | R {sR} | " +
+            $"UpdateRotation {sRotCalls} im Frame, {rotCalls} in {frames} Frames | UpdateLookDirection {lookCalls} in {frames} Frames{sLook}");
+        rotCalls = lookCalls = 0;
+        windowFrame = Time.frameCount;
     }
 
     public override void OnUpdate()
@@ -107,18 +275,28 @@ public sealed class XRStart : MelonMod
         {
             refStart = Time.unscaledTime;
             refUntil = refStart + ReferenceSeconds;
-            nextRefUpdate = nextRefLate = refStart;
-            LoggerInstance.Msg($"F9: Referenzmessung {ReferenceSeconds:F0} s, XR {(started ? "LAEUFT" : "aus")} - Maus bewegen");
+            nextRefUpdate = refStart;
+            LoggerInstance.Msg($"F9: Kopfmessung {ReferenceSeconds:F0} s, XR {(started ? "LAEUFT" : "aus")} - Maus bewegen, mit XR auch den Kopf");
+            HookBeforeRender();
+            ReportController();
+            rotCalls = lookCalls = 0;
+            windowFrame = Time.frameCount;
         }
         f9WasDown = f9;
 
-        // Dieselbe Kopfzeile auch vor den LateUpdate-Schreibern: unterscheiden
-        // sich U und L, schreibt jemand dazwischen.
+        // Erst den Messframe des letzten Durchgangs ausgeben, dann ggf. einen
+        // neuen oeffnen. U ist der Stand vor den Update-Schreibern des Spiels.
+        FlushSample();
         float now = Time.unscaledTime;
         if (now < refUntil && now >= nextRefUpdate)
         {
             nextRefUpdate = now + 1f;
-            LogHead($"ref t+{now - refStart:F0}s U");
+            sampleFrame = Time.frameCount;
+            sampleOpen = true;
+            sU = ReadHead();
+            sPre = sPost = sL = sR = "-";
+            sLook = "";
+            sRotCalls = 0;
         }
         if (now < reportUntil && now >= nextXrUpdate)
         {
@@ -137,11 +315,8 @@ public sealed class XRStart : MelonMod
             nextReport = now + 1f;
             Report($"status t+{now - startTime:F0}s");
         }
-        if (now < refUntil && now >= nextRefLate)
-        {
-            nextRefLate = now + 1f;
-            LogHead($"ref t+{now - refStart:F0}s L");
-        }
+        if (sampleOpen && Time.frameCount == sampleFrame)
+            sL = ReadHead();
     }
 
     // Jedes Geraet, das das Input System anlegt oder entfernt - auch Controller,
@@ -337,7 +512,8 @@ public sealed class XRStart : MelonMod
         {
             var loader = XRGeneralSettings.Instance?.Manager?.activeLoader;
             var input = loader == null ? null : loader.GetLoadedSubsystem<XRInputSubsystem>();
-            sb.Append(input == null ? " | XRInputSubsystem: keins" : $" | XRInputSubsystem running={input.running}");
+            sb.Append(input == null ? " | XRInputSubsystem: keins"
+                : $" | XRInputSubsystem running={input.running} origin={input.GetTrackingOriginMode()} supported={input.GetSupportedTrackingOriginModes()}");
         }
         catch (Exception e) { sb.Append(" | XRInputSubsystem Lesefehler " + e.GetType().Name + ": " + e.Message); }
 
