@@ -52,6 +52,45 @@
 //     m_horizontalLook/m_verticalLook dieselben Objekte wie Camera.main und
 //     ihr Elternknoten sind, m_rigTransform, m_camera.
 //   - im XR-Bericht: Tracking-Ursprung des XRInputSubsystem.
+//
+// 0.5.0 hat gezeigt: UpdateRotation schreibt HeadTurn.y/PlayerCamera.x 1x pro
+// Frame absolut aus HorizontalLookRotation/VerticalLookRotation, danach
+// schreibt bis onBeforeRender niemand (Handbuch 2.6). 0.6.0 SCHREIBT DEN KOPF,
+// und nur den - F7 schaltet es, aus beim Start, nur bei laufendem XR.
+// In OnLateUpdate, hinter UpdateRotation (PWS2-Kopfkette, PWS2-Handbuch §5):
+//   HeadTurn.localRotation     = Euler(0, bodyYaw + hmdYaw, 0)
+//   PlayerCamera.localRotation = Inverse(Euler(0, hmdYaw, 0)) * hmdRotation
+//   HeadTurn.localPosition     = headTurnRest + Euler(0, bodyYaw, 0) * (hmd - headPoseBase)
+// bodyYaw = HorizontalLookRotation, jedes Frame gelesen: die Maus dreht den
+// Koerper weiter ueber das Spiel. Der Maus-Pitch (VerticalLookRotation) wird
+// verworfen, der Kopf allein neigt. headTurnRest wird vor dem ersten
+// Schreibzugriff je HeadTurn-Instanz erfasst, headPoseBase beim Einschalten
+// (F7 aus/an = neu zentrieren). Beim Ausschalten kommt headTurnRest zurueck.
+// Einmal pro Sekunde eine Zeile: der Wert des Spiels vor dem Schreiben
+// (muss = bodyYaw sein, sonst liest das Spiel den eigenen Schreibzugriff
+// zurueck) und das Geschriebene. F9 prueft wie in 0.5.0, ob L bis R haelt.
+//
+// 0.6.0 hat gezeigt: der Koerper dreht sich von selbst, mit hmdYaw x Framerate.
+// UpdateRotation liest HeadTurn.localRotation.y nach HorizontalLookRotation,
+// bevor es die Maus addiert - es integriert auf dem Transform und liest den
+// Schreibzugriff der Mod zurueck (Handbuch 2.7). 0.6.1: bodyYaw fuehrt die
+// Mod selbst, einmal aus HorizontalLookRotation uebernommen; hinein geht nur
+// die Mausaenderung, gemessen als Differenz HeadTurn.y vor UpdateRotation ->
+// HorizontalLookRotation danach (Prefix/Postfix, die es schon gibt).
+//
+// 0.6.1 hat gezeigt: kein Selbstdrehen mehr, Maus dreht den Koerper und bleibt
+// stehen; Umschauen wirkt aber zittrig bei stabilen 45 Frames/s. Hypothese:
+// die Pose aus OnLateUpdate ist aelter als die, mit der gerendert und
+// uebergeben wird - die Reprojektion korrigiert dann falsch. 0.6.2: F6
+// schaltet den Schreibpunkt zwischen OnLateUpdate (wie 0.6.1, Vorgabe) und
+// Application.onBeforeRender (wie TrackedPoseDriver) - Vergleich im selben
+// Lauf. Pro Sekunde: Winkel zwischen LateUpdate- und Render-Pose desselben
+// Frames gegen die Kopfbewegung je Frame.
+//
+// 0.6.2 hat gezeigt: mit onBeforeRender "absolut fluessig" (Nutzer). Die
+// LateUpdate-Pose liegt im Mittel 0,2-0,5 Grad (bis 2,4) hinter der
+// Render-Pose, 20-35 % der Kopfbewegung eines Frames (Handbuch 2.8). 0.6.3:
+// onBeforeRender ist die Vorgabe, F6 schaltet zurueck.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -69,13 +108,14 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.5.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.6.3", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
 
 public sealed class XRStart : MelonMod
 {
+    private const int VK_F7 = 0x76;
     private const int VK_F8 = 0x77;
     private const int VK_F9 = 0x78;
 
@@ -98,6 +138,31 @@ public sealed class XRStart : MelonMod
     private static int sRotCalls;
     private static int rotCalls, lookCalls, windowFrame;
     private bool beforeRenderHooked;
+
+    // F7: Kopf schreiben. Alle vier Referenzen gehoeren zusammen und werden
+    // nur gemeinsam geraeumt (Unity-null sieht ein zerstoertes Objekt, "is
+    // null" nicht).
+    private bool f7WasDown;
+    private bool writeHead;
+    private PlayerCameraController? headCtl;
+    private Transform? headTurn, headCam;
+    private IntPtr restFor = IntPtr.Zero;   // HeadTurn-Instanz, zu der headTurnRest gehoert
+    private Vector3 headTurnRest, headPoseBase;
+    private bool haveBase;
+    private float nextHeadLog, nextHeadResolve;
+    private int headWrites;
+
+    // F6: Schreibpunkt onBeforeRender (Vorgabe seit 0.6.3, im Headset
+    // "absolut fluessig") oder OnLateUpdate (wie 0.6.1, zittert).
+    private static XRStart? self;
+    private const int VK_F6 = 0x75;
+    private bool f6WasDown;
+    private bool writeAtRender = true;
+    private Quaternion lateRot, lastRenderRot;
+    private int lateRotFrame = -1;
+    private bool haveRenderRot;
+    private float poseGapSum, poseGapMax, headStepSum;
+    private int poseGapN;
     private float nextXrUpdate;
     private float reportUntil;
     private float nextReport;
@@ -111,11 +176,13 @@ public sealed class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F9 = 20 s Kopfmessung (mit oder ohne XR)");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F9 = 20 s Kopfmessung");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
         PatchCameraController();
+        self = this;
+        HookBeforeRender();   // seit 0.6.2 auch Schreibpunkt, nicht nur F9-Messung
     }
 
     // Nur Zaehler und Lesungen, kein Eingriff: Prefix gibt nichts zurueck,
@@ -143,8 +210,27 @@ public sealed class XRStart : MelonMod
         }
     }
 
+    // Koerper-Yaw beim Kopfschreiben. UpdateRotation liest als Erstes
+    // HeadTurn.localRotation.eulerAngles.y nach HorizontalLookRotation (Icall
+    // get_localRotation_Injected, Handbuch 2.7) - also den Kopf-Yaw, den die
+    // Mod im Vorframe geschrieben hat. Nur die Differenz vor/nach
+    // UpdateRotation ist die Maus; nur sie geht in bodyYaw.
+    private static bool trackBody;
+    private static float bodyYaw, readYaw, mouseYawSum;
+    private static bool haveRead;
+
     private static void RotationPrefix(PlayerCameraController __instance)
     {
+        if (trackBody)
+        {
+            try
+            {
+                var h = __instance.m_horizontalLook;
+                haveRead = h != null;
+                if (haveRead) readYaw = h!.localEulerAngles.y;
+            }
+            catch { haveRead = false; }
+        }
         rotCalls++;
         if (!sampleOpen || Time.frameCount != sampleFrame) return;
         sRotCalls++;
@@ -153,6 +239,13 @@ public sealed class XRStart : MelonMod
 
     private static void RotationPostfix(PlayerCameraController __instance)
     {
+        if (trackBody && haveRead)
+        {
+            float d = Mathf.DeltaAngle(readYaw, __instance.HorizontalLookRotation);
+            bodyYaw = Mathf.Repeat(bodyYaw + d, 360f);
+            mouseYawSum += d;
+            haveRead = false;
+        }
         if (!sampleOpen || Time.frameCount != sampleFrame) return;
         sPost = ReadLook(__instance);
     }
@@ -208,10 +301,53 @@ public sealed class XRStart : MelonMod
 
     private static void OnBeforeRender()
     {
+        self?.BeforeRender();
         // Nur der erste Aufruf des Messframes: das ist der Stand, mit dem
         // gerendert wird.
         if (sampleOpen && Time.frameCount == sampleFrame && sR == "-")
             sR = ReadHead();
+    }
+
+    // Kopfpose zum zweiten Mal im Frame, kurz vor dem Rendern. Das Input
+    // System aktualisiert getrackte Geraete vor dem Rendern noch einmal; der
+    // Unterschied zur OnLateUpdate-Pose ist das, was der Schreibpunkt
+    // LateUpdate zu alt ist. Geschrieben wird hier nur mit F6 = Render.
+    private void BeforeRender()
+    {
+        if (!writeHead) return;
+        var r = ReadHmdRotation();
+        if (r.HasValue)
+        {
+            if (lateRotFrame == Time.frameCount)
+            {
+                float d = AngleDeg(lateRot, r.Value);
+                poseGapSum += d;
+                poseGapMax = Math.Max(poseGapMax, d);
+                poseGapN++;
+            }
+            if (haveRenderRot) headStepSum += AngleDeg(lastRenderRot, r.Value);
+            lastRenderRot = r.Value;
+            haveRenderRot = true;
+        }
+        if (writeAtRender) DriveHead();
+    }
+
+    private static Quaternion? ReadHmdRotation()
+    {
+        try
+        {
+            var hmd = InputSystem.GetDevice<XRHMD>();
+            if (hmd == null || !hmd.isTracked.isPressed) return null;
+            return hmd.centerEyeRotation.ReadValue();
+        }
+        catch { return null; }
+    }
+
+    // In C# gerechnet, nicht ueber die Interop-Grenze.
+    private static float AngleDeg(Quaternion a, Quaternion b)
+    {
+        double dot = Math.Abs((double)a.x * b.x + (double)a.y * b.y + (double)a.z * b.z + (double)a.w * b.w);
+        return (float)(2.0 * Math.Acos(Math.Min(1.0, dot)) * 180.0 / Math.PI);
     }
 
     // Einmal zu Fensterbeginn: wie viele Controller, und halten sie dieselben
@@ -284,6 +420,30 @@ public sealed class XRStart : MelonMod
         }
         f9WasDown = f9;
 
+        bool f7 = (GetAsyncKeyState(VK_F7) & 0x8000) != 0;
+        if (f7 && !f7WasDown && Application.isFocused)
+        {
+            if (writeHead) StopWriting("F7");
+            else if (!started) LoggerInstance.Msg("F7: XR laeuft nicht - erst F8");
+            else
+            {
+                writeHead = true;
+                haveBase = false;           // neu zentrieren beim ersten Frame
+                headWrites = 0;
+                nextHeadLog = 0f;
+                LoggerInstance.Msg("F7: Kopf schreiben AN (Maus-Pitch verworfen, Maus-Yaw = Koerper)");
+            }
+        }
+        f7WasDown = f7;
+
+        bool f6 = (GetAsyncKeyState(VK_F6) & 0x8000) != 0;
+        if (f6 && !f6WasDown && Application.isFocused)
+        {
+            writeAtRender = !writeAtRender;
+            LoggerInstance.Msg($"F6: Schreibpunkt jetzt {(writeAtRender ? "onBeforeRender" : "OnLateUpdate")}");
+        }
+        f6WasDown = f6;
+
         // Erst den Messframe des letzten Durchgangs ausgeben, dann ggf. einen
         // neuen oeffnen. U ist der Stand vor den Update-Schreibern des Spiels.
         FlushSample();
@@ -315,8 +475,148 @@ public sealed class XRStart : MelonMod
             nextReport = now + 1f;
             Report($"status t+{now - startTime:F0}s");
         }
+        // Erst schreiben, dann L lesen: L ist dann das Geschriebene, und F9
+        // zeigt mit R, ob es bis zum Rendern haelt.
+        if (writeHead)
+        {
+            var r = ReadHmdRotation();
+            if (r.HasValue) { lateRot = r.Value; lateRotFrame = Time.frameCount; }
+            if (!writeAtRender) DriveHead();
+        }
         if (sampleOpen && Time.frameCount == sampleFrame)
             sL = ReadHead();
+    }
+
+    private void DriveHead()
+    {
+        if (!started) { StopWriting("XR aus"); return; }
+        float now = Time.unscaledTime;
+        if (!ResolveHead(now)) return;
+
+        try
+        {
+            var hmd = InputSystem.GetDevice<XRHMD>();
+            if (hmd == null || !hmd.isTracked.isPressed)
+            {
+                if (now >= nextHeadLog)
+                {
+                    nextHeadLog = now + 1f;
+                    LoggerInstance.Msg($"KOPF-SCHREIBEN f={Time.frameCount}: HMD {(hmd == null ? "fehlt" : "nicht getrackt")} - Frame ausgelassen");
+                }
+                return;
+            }
+            var pos = hmd.centerEyePosition.ReadValue();
+            var rot = hmd.centerEyeRotation.ReadValue();
+            if (!haveBase)
+            {
+                headPoseBase = pos;
+                haveBase = true;
+                LoggerInstance.Msg($"KOPF-SCHREIBEN: Basis hmd={pos:F3}, headTurnRest={headTurnRest:F3}");
+            }
+
+            // Vor dem ersten Schreiben (je Einschalten und je Controller) ist
+            // HorizontalLookRotation noch der reine Blick des Spiels.
+            if (!trackBody)
+            {
+                bodyYaw = headCtl!.HorizontalLookRotation;
+                mouseYawSum = 0f;
+                haveRead = false;
+                trackBody = true;
+                LoggerInstance.Msg($"KOPF-SCHREIBEN: bodyYaw uebernommen {bodyYaw:F1}");
+            }
+            float gameYaw = headTurn!.localEulerAngles.y;   // Stand des Spiels, vor dem Schreiben
+            float hmdYaw = rot.eulerAngles.y;
+            var yaw = Quaternion.Euler(0f, hmdYaw, 0f);
+
+            headTurn.localRotation = Quaternion.Euler(0f, bodyYaw + hmdYaw, 0f);
+            headCam!.localRotation = Quaternion.Inverse(yaw) * rot;
+            headTurn.localPosition = headTurnRest + Quaternion.Euler(0f, bodyYaw, 0f) * (pos - headPoseBase);
+            headWrites++;
+
+            if (now >= nextHeadLog)
+            {
+                nextHeadLog = now + 1f;
+                // Spiel vorher = bodyYaw + hmdYaw des Vorframes + Maus: das
+                // Spiel hat den eigenen Schreibzugriff gelesen. mausYaw ist die
+                // Summe seit der letzten Zeile, die in bodyYaw eingeht.
+                LoggerInstance.Msg($"KOPF-SCHREIBEN f={Time.frameCount} n={headWrites} | Spiel vorher y={gameYaw:F1} H={headCtl!.HorizontalLookRotation:F1} " +
+                    $"bodyYaw={bodyYaw:F1} mausYaw/s={mouseYawSum:F1} Maus-Pitch(verworfen)={headCtl.VerticalLookRotation:F1} | hmd pos={pos:F3} rot={rot.eulerAngles:F1} | " +
+                    $"geschrieben HeadTurn lp={headTurn.localPosition:F3} le={headTurn.localEulerAngles:F1} PlayerCamera le={headCam.localEulerAngles:F1} | " +
+                    $"Kamera we={headCam.eulerAngles:F1} wp={headCam.position:F2}");
+                // Schreibpunkt und wie alt die LateUpdate-Pose gegen die
+                // Render-Pose ist, verglichen mit der Kopfbewegung selbst.
+                LoggerInstance.Msg($"KOPF-TAKT f={Time.frameCount} Schreibpunkt={(writeAtRender ? "onBeforeRender" : "OnLateUpdate")} | " +
+                    $"Pose LateUpdate->Render: mittel {(poseGapN == 0 ? 0f : poseGapSum / poseGapN):F3}° max {poseGapMax:F3}° in {poseGapN} Frames | " +
+                    $"Kopfbewegung {headStepSum:F1}°/s, je Frame {(poseGapN == 0 ? 0f : headStepSum / poseGapN):F3}°");
+                mouseYawSum = 0f;
+                poseGapSum = poseGapMax = headStepSum = 0f;
+                poseGapN = 0;
+            }
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Error("KOPF-SCHREIBEN: Ausnahme, ausgeschaltet - " + e);
+            StopWriting("Ausnahme");
+        }
+    }
+
+    // Kopfknoten aus dem Controller des Spiels, nicht aus Namen. Neue
+    // HeadTurn-Instanz (Levelwechsel) -> Ruhelage neu, vor dem ersten Schreiben.
+    private bool ResolveHead(float now)
+    {
+        if (headCtl != null && headTurn != null && headCam != null) return true;
+        ClearHead();
+        if (now < nextHeadResolve) return false;
+        nextHeadResolve = now + 1f;
+
+        var ctl = UnityEngine.Object.FindObjectOfType<PlayerCameraController>();
+        var h = ctl == null ? null : ctl.m_horizontalLook;
+        var v = ctl == null ? null : ctl.m_verticalLook;
+        if (ctl == null || h == null || v == null)
+        {
+            LoggerInstance.Msg($"KOPF-SCHREIBEN: kein Kopf (Controller {(ctl == null ? "fehlt" : "ohne Knoten")}) - warte");
+            return false;
+        }
+        headCtl = ctl;
+        headTurn = h;
+        headCam = v;
+        if (h.Pointer != restFor)
+        {
+            headTurnRest = h.localPosition;
+            restFor = h.Pointer;
+            haveBase = false;
+        }
+        LoggerInstance.Msg($"KOPF-SCHREIBEN: gebunden HeadTurn='{h.name}' PlayerCamera='{v.name}' rest={headTurnRest:F3}");
+        return true;
+    }
+
+    // Auch bodyYaw gehoert zum gebundenen Controller: ein neuer liest neu ein.
+    private void ClearHead()
+    {
+        trackBody = false;
+        haveRead = false;
+        headCtl = null;
+        headTurn = null;
+        headCam = null;
+    }
+
+    // Rotation gibt das Spiel im naechsten UpdateRotation selbst zurueck, die
+    // Position schreibt es nie - die kommt hier zurueck.
+    private void StopWriting(string why)
+    {
+        if (!writeHead) return;
+        writeHead = false;
+        try
+        {
+            if (headTurn != null && headTurn.Pointer == restFor)
+                headTurn.localPosition = headTurnRest;
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Warning("KOPF-SCHREIBEN: Ruhelage nicht zurueckgesetzt - " + e.GetType().Name + ": " + e.Message);
+        }
+        LoggerInstance.Msg($"Kopf schreiben AUS ({why}) nach {headWrites} Frames");
+        ClearHead();
     }
 
     // Jedes Geraet, das das Input System anlegt oder entfernt - auch Controller,
@@ -409,6 +709,7 @@ public sealed class XRStart : MelonMod
 
     private void Stop(string why)
     {
+        StopWriting("XR-Stopp " + why);
         var manager = DescribeManager("vor dem Stopp (" + why + ")");
         started = false;
         reportUntil = 0f;
