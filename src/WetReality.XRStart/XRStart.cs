@@ -95,6 +95,10 @@
 // 0.7.0: Pistolenmessung im F9-Fenster, schreibt NICHTS an der Pistole
 // (GunProbe.cs). Der Kopf bleibt wie 0.6.3. 0.7.1: dazu Spielerposition,
 // Rig/RigOffset lokal und Anker relativ zur Kamera - 0.7.0 lief im Stillstand.
+// 0.8.0: F5 schreibt die Pistole - Weltpose der Assembly aus dem rechten
+// Controller in onBeforeRender, nach dem Kopf (GunDrive.cs).
+// 0.9.0: PWS2-Korrekturen fuer Pistole und Strahl, F4 (GunFixes.cs).
+// 0.9.1: Duesenanker vom Zwilling der 3. Person (PWS2 Bit 65536, 1.103.0).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -112,7 +116,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.7.3", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.9.1", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -180,17 +184,18 @@ public sealed partial class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F9 = 20 s Kopfmessung");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F9 = 20 s Kopfmessung");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
         PatchCameraController();
         PatchGunWriters();
+        PatchGunFixes();
         self = this;
         HookBeforeRender();   // seit 0.6.2 auch Schreibpunkt, nicht nur F9-Messung
         // Das 0x0001-Bit kann von einem frueheren Druck stehen (auch in einem
         // anderen Programm) - einmal ablesen, damit F8 nicht von selbst startet.
-        foreach (int vk in new[] { VK_F6, VK_F7, VK_F8, VK_F9 }) GetAsyncKeyState(vk);
+        foreach (int vk in new[] { VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9 }) GetAsyncKeyState(vk);
     }
 
     // Nur Zaehler und Lesungen, kein Eingriff: Prefix gibt nichts zurueck,
@@ -254,6 +259,7 @@ public sealed partial class XRStart : MelonMod
             mouseYawSum += d;
             haveRead = false;
         }
+        ApplyLookPitch(__instance);   // PWS2 Bit 512, nur mit Pistole und F4
         if (!sampleOpen || Time.frameCount != sampleFrame) return;
         sPost = ReadLook(__instance);
     }
@@ -325,7 +331,14 @@ public sealed partial class XRStart : MelonMod
     // LateUpdate zu alt ist. Geschrieben wird hier nur mit F6 = Render.
     private void BeforeRender()
     {
-        if (!writeHead) return;
+        if (writeHead) MeasurePoseGap();
+        if (writeHead && writeAtRender) DriveHead();
+        // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
+        if (writeGun) { DriveGun(); ApplyGunFixes(); }
+    }
+
+    private void MeasurePoseGap()
+    {
         var r = ReadHmdRotation();
         if (r.HasValue)
         {
@@ -340,7 +353,6 @@ public sealed partial class XRStart : MelonMod
             lastRenderRot = r.Value;
             haveRenderRot = true;
         }
-        if (writeAtRender) DriveHead();
     }
 
     private static Quaternion? ReadHmdRotation()
@@ -428,6 +440,7 @@ public sealed partial class XRStart : MelonMod
 
     public override void OnUpdate()
     {
+        CheckGunReadback();   // vor allem anderen: der Stand zwischen Render und diesem Update
         if (KeyPressed(VK_F8, ref keyWasDown, "F8"))
         {
             if (started) Stop("F8");
@@ -459,6 +472,15 @@ public sealed partial class XRStart : MelonMod
                 nextHeadLog = 0f;
                 LoggerInstance.Msg("F7: Kopf schreiben AN (Maus-Pitch verworfen, Maus-Yaw = Koerper)");
             }
+        }
+
+        if (KeyPressed(VK_F5, ref f5WasDown, "F5"))
+            ToggleGun();
+
+        if (KeyPressed(VK_F4, ref f4WasDown, "F4"))
+        {
+            fixesOn = !fixesOn;
+            LoggerInstance.Msg($"F4: PWS2-Korrekturen {(fixesOn ? "AN" : "AUS")}");
         }
 
         if (KeyPressed(VK_F6, ref f6WasDown, "F6"))
@@ -560,6 +582,8 @@ public sealed partial class XRStart : MelonMod
             headCam!.localRotation = Quaternion.Inverse(yaw) * rot;
             headTurn.localPosition = headTurnRest + Quaternion.Euler(0f, bodyYaw, 0f) * (pos - headPoseBase);
             headWrites++;
+            headPitchPub = Mathf.DeltaAngle(0f, headCam.localEulerAngles.x);
+            headPitchPublished = true;
 
             if (now >= nextHeadLog)
             {
@@ -643,6 +667,7 @@ public sealed partial class XRStart : MelonMod
         {
             LoggerInstance.Warning("KOPF-SCHREIBEN: Ruhelage nicht zurueckgesetzt - " + e.GetType().Name + ": " + e.Message);
         }
+        headPitchPublished = false;   // ohne Kopfschreiber gibt es keine HMD-Neigung fuer Bit 512
         LoggerInstance.Msg($"Kopf schreiben AUS ({why}) nach {headWrites} Frames");
         ClearHead();
     }
@@ -737,6 +762,7 @@ public sealed partial class XRStart : MelonMod
 
     private void Stop(string why)
     {
+        StopGun("XR-Stopp " + why);
         StopWriting("XR-Stopp " + why);
         var manager = DescribeManager("vor dem Stopp (" + why + ")");
         started = false;
