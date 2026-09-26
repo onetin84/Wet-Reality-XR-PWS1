@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Steam-Standardort als Vorgabe. Liegt das Spiel woanders, gehoert der
+         Pfad in Directory.Build.props im Wurzelverzeichnis (nicht versioniert,
+         Vorlage daneben) oder an die Befehlszeile: -p:GamePath="D:\..." -->
+    <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator</GamePath>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <DebugType>embedded</DebugType>
+    <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
+    <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0</AssemblyVersion>
+    <FileVersion>0.1.0</FileVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.CoreModule.dll" Private="false" />
+    <!-- Unity 2020.3: XRSettings liegt in VRModule, XRDisplaySubsystem in
+         XRModule, die Subsystem-Basis in SubsystemsModule. -->
+    <Reference Include="UnityEngine.VRModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.VRModule.dll" Private="false" />
+    <Reference Include="UnityEngine.XRModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.XRModule.dll" Private="false" />
+    <Reference Include="UnityEngine.SubsystemsModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.SubsystemsModule.dll" Private="false" />
+    <!-- Die managed XR-Schicht ist in PWS1 einkompiliert (Handbuch 1.2) -
+         anders als bei PWS2 wird sie hier nur aufgerufen, nicht nachgebaut. -->
+    <Reference Include="Unity.XR.Management" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.XR.Management.dll" Private="false" />
+    <Reference Include="Unity.XR.OpenXR" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.XR.OpenXR.dll" Private="false" />
+  </ItemGroup>
+</Project>
