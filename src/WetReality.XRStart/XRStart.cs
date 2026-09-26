@@ -24,11 +24,26 @@
 //     ein Zustand, der sich aufbauen kann, wird nicht einmalig abgegriffen.
 //   - "[XR] SetOutput Failed." pro Frame, gezaehlt im mitgelesenen
 //     Player.log, damit sich zeigt, ob die Meldung im Frametakt kommt.
+//
+// 0.2.0 hat gezeigt: im Auftrag zeichnet HeadTurn/PlayerCamera stereo, das
+// Bild folgt dem Kopf nicht (Handbuch 2.2). 0.3.0 schreibt weiter NICHTS und
+// misst, was der naechste Schritt braucht:
+//   - Posequellen: XRHMD, linker/rechter XRController aus dem Input System -
+//     vorhanden, getrackt, Pose, Trigger. Liefern die automatisch angehaengten
+//     Action Sets Werte?
+//   - Wer haelt den Kopf: lokale Pose von PlayerCamera, ihrem Elternknoten und
+//     dessen Elternknoten, in DERSELBEN Zeile wie die HMD-Pose (ein Block,
+//     eine Momentaufnahme). Gemessen in OnLateUpdate, hinter den
+//     Update-Schreibern des Spiels. Fenster 30 s: erst Kopf, dann Maus bewegen.
+//     Angekert an Camera.main (Tag MainCamera), nicht an Knotennamen.
 
 using System.Runtime.InteropServices;
 using System.Text;
 using MelonLoader;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.XR;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
@@ -36,7 +51,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.2.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.3.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -52,6 +67,8 @@ public sealed class XRStart : MelonMod
     private bool started;
     private float reportUntil;
     private float nextReport;
+    private float startTime;
+    private const float ReportSeconds = 30f;
 
     private const string SetOutputMarker = "SetOutput Failed";
     private long logOffset = -1;
@@ -76,11 +93,16 @@ public sealed class XRStart : MelonMod
             if (started) Stop("F8");
             else Start();
         }
+    }
 
+    // Hinter den Update-Schreibern des Spiels: ein Bericht vor dem Schreiber
+    // liest einen Fremdwert.
+    public override void OnLateUpdate()
+    {
         if (Time.unscaledTime < reportUntil && Time.unscaledTime >= nextReport)
         {
             nextReport = Time.unscaledTime + 1f;
-            Report("status");
+            Report($"status t+{Time.unscaledTime - startTime:F0}s");
         }
     }
 
@@ -138,8 +160,9 @@ public sealed class XRStart : MelonMod
         }
 
         started = true;
+        startTime = Time.unscaledTime;
         Report("direkt nach dem Start");
-        reportUntil = Time.unscaledTime + 10f;
+        reportUntil = Time.unscaledTime + ReportSeconds;
         nextReport = Time.unscaledTime + 1f;
     }
 
@@ -223,7 +246,71 @@ public sealed class XRStart : MelonMod
             $"device='{XRSettings.loadedDeviceName}', eye={XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}, " +
             $"display {display}, runtime {runtime}, {camera}, {SetOutputRate()}");
         ReportCameras(when);
+        ReportPoses(when);
     }
+
+    // Eine Zeile: HMD, beide Controller, Kopfknoten. Dieselbe Momentaufnahme.
+    private void ReportPoses(string when)
+    {
+        var sb = new StringBuilder(when + ": POSE");
+
+        try
+        {
+            var hmd = InputSystem.GetDevice<XRHMD>();
+            if (hmd == null) sb.Append(" | HMD: kein XRHMD-Geraet");
+            else
+                sb.Append($" | HMD '{hmd.displayName}' layout={hmd.layout} tracked={Btn(hmd.isTracked)} state={Int(hmd.trackingState)} " +
+                          $"centerEye pos={V(hmd.centerEyePosition)} rot={Q(hmd.centerEyeRotation)}");
+        }
+        catch (Exception e) { sb.Append(" | HMD Lesefehler " + e.GetType().Name + ": " + e.Message); }
+
+        AppendController(sb, "L", () => XRController.leftHand);
+        AppendController(sb, "R", () => XRController.rightHand);
+
+        try
+        {
+            var cam = Camera.main;
+            if (cam == null) sb.Append(" | Kopf: Camera.main=null");
+            else
+            {
+                var t = cam.transform;
+                sb.Append($" | {t.name}: lp={t.localPosition:F3} le={t.localEulerAngles:F1}");
+                var p = t.parent;
+                if (p != null)
+                {
+                    sb.Append($" | {p.name}: lp={p.localPosition:F3} le={p.localEulerAngles:F1}");
+                    var pp = p.parent;
+                    if (pp != null)
+                        sb.Append($" | {pp.name}: wp={pp.position:F3} we={pp.eulerAngles:F1}");
+                }
+                sb.Append($" | cam world e={t.eulerAngles:F1}");
+            }
+        }
+        catch (Exception e) { sb.Append(" | Kopf Lesefehler " + e.GetType().Name + ": " + e.Message); }
+
+        LoggerInstance.Msg(sb.ToString());
+    }
+
+    private static void AppendController(StringBuilder sb, string side, Func<XRController?> get)
+    {
+        try
+        {
+            var c = get();
+            if (c == null) { sb.Append($" | {side}: kein XRController"); return; }
+            string trigger;
+            var ctl = c.TryGetChildControl("trigger");
+            var axis = ctl == null ? null : ctl.TryCast<AxisControl>();
+            trigger = axis == null ? "kein trigger" : $"trigger={axis.ReadValue():F2}";
+            sb.Append($" | {side} '{c.displayName}' layout={c.layout} tracked={Btn(c.isTracked)} " +
+                      $"pos={V(c.devicePosition)} rot={Q(c.deviceRotation)} {trigger}");
+        }
+        catch (Exception e) { sb.Append($" | {side} Lesefehler " + e.GetType().Name + ": " + e.Message); }
+    }
+
+    private static string V(Vector3Control? c) => c == null ? "keine" : c.ReadValue().ToString("F3");
+    private static string Q(QuaternionControl? c) => c == null ? "keine" : c.ReadValue().eulerAngles.ToString("F1");
+    private static string Btn(ButtonControl? c) => c == null ? "?" : c.isPressed.ToString();
+    private static string Int(IntegerControl? c) => c == null ? "?" : c.ReadValue().ToString();
 
     // "N SetOutput in F Frames" seit dem letzten Aufruf.
     private string SetOutputRate()
