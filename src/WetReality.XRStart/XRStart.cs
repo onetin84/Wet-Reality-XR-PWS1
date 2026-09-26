@@ -51,7 +51,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.3.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.4.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -59,12 +59,19 @@ namespace WetReality.XRStart;
 public sealed class XRStart : MelonMod
 {
     private const int VK_F8 = 0x77;
+    private const int VK_F9 = 0x78;
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
     private bool keyWasDown;
+    private bool f9WasDown;
     private bool started;
+
+    // F9: Referenzlauf OHNE XR. Misst das Instrument die Mausdrehung ueberhaupt?
+    private const float ReferenceSeconds = 20f;
+    private float refStart, refUntil, nextRefUpdate, nextRefLate;
+    private float nextXrUpdate;
     private float reportUntil;
     private float nextReport;
     private float startTime;
@@ -77,9 +84,10 @@ public sealed class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F9 = 20 s Kopfmessung ohne XR");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
+        HookDeviceChanges();
     }
 
     public override void OnUpdate()
@@ -93,16 +101,74 @@ public sealed class XRStart : MelonMod
             if (started) Stop("F8");
             else Start();
         }
+
+        bool f9 = (GetAsyncKeyState(VK_F9) & 0x8000) != 0;
+        if (f9 && !f9WasDown && Application.isFocused)
+        {
+            refStart = Time.unscaledTime;
+            refUntil = refStart + ReferenceSeconds;
+            nextRefUpdate = nextRefLate = refStart;
+            LoggerInstance.Msg($"F9: Referenzmessung {ReferenceSeconds:F0} s, XR {(started ? "LAEUFT" : "aus")} - Maus bewegen");
+        }
+        f9WasDown = f9;
+
+        // Dieselbe Kopfzeile auch vor den LateUpdate-Schreibern: unterscheiden
+        // sich U und L, schreibt jemand dazwischen.
+        float now = Time.unscaledTime;
+        if (now < refUntil && now >= nextRefUpdate)
+        {
+            nextRefUpdate = now + 1f;
+            LogHead($"ref t+{now - refStart:F0}s U");
+        }
+        if (now < reportUntil && now >= nextXrUpdate)
+        {
+            nextXrUpdate = now + 1f;
+            LogHead($"xr t+{now - startTime:F0}s U");
+        }
     }
 
     // Hinter den Update-Schreibern des Spiels: ein Bericht vor dem Schreiber
     // liest einen Fremdwert.
     public override void OnLateUpdate()
     {
-        if (Time.unscaledTime < reportUntil && Time.unscaledTime >= nextReport)
+        float now = Time.unscaledTime;
+        if (now < reportUntil && now >= nextReport)
         {
-            nextReport = Time.unscaledTime + 1f;
-            Report($"status t+{Time.unscaledTime - startTime:F0}s");
+            nextReport = now + 1f;
+            Report($"status t+{now - startTime:F0}s");
+        }
+        if (now < refUntil && now >= nextRefLate)
+        {
+            nextRefLate = now + 1f;
+            LogHead($"ref t+{now - refStart:F0}s L");
+        }
+    }
+
+    // Jedes Geraet, das das Input System anlegt oder entfernt - auch Controller,
+    // die erst spaeter binden. Aufzaehlen ueber InputSystem.devices waere ein
+    // Struct-Rueckgabewert (ReadOnlyArray) ueber die Interop-Grenze; das
+    // Ereignis braucht keinen. Aus demselben Grund keine usages (ebenfalls ReadOnlyArray).
+    private void HookDeviceChanges()
+    {
+        try
+        {
+            System.Action<UnityEngine.InputSystem.InputDevice, InputDeviceChange> handler = (device, change) =>
+            {
+                try
+                {
+                    LoggerInstance.Msg($"Geraet {change}: '{device.displayName}' layout={device.layout} id={device.deviceId}");
+                }
+                catch (Exception e)
+                {
+                    LoggerInstance.Warning($"Geraet {change}: Lesefehler {e.GetType().Name}: {e.Message}");
+                }
+            };
+            InputSystem.add_onDeviceChange(handler);
+            LoggerInstance.Msg("onDeviceChange: angemeldet");
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Error("onDeviceChange: nicht angemeldet - " + e);
         }
     }
 
@@ -163,7 +229,7 @@ public sealed class XRStart : MelonMod
         startTime = Time.unscaledTime;
         Report("direkt nach dem Start");
         reportUntil = Time.unscaledTime + ReportSeconds;
-        nextReport = Time.unscaledTime + 1f;
+        nextReport = nextXrUpdate = Time.unscaledTime + 1f;
     }
 
     private void Stop(string why)
@@ -269,25 +335,36 @@ public sealed class XRStart : MelonMod
 
         try
         {
+            var loader = XRGeneralSettings.Instance?.Manager?.activeLoader;
+            var input = loader == null ? null : loader.GetLoadedSubsystem<XRInputSubsystem>();
+            sb.Append(input == null ? " | XRInputSubsystem: keins" : $" | XRInputSubsystem running={input.running}");
+        }
+        catch (Exception e) { sb.Append(" | XRInputSubsystem Lesefehler " + e.GetType().Name + ": " + e.Message); }
+
+        LoggerInstance.Msg(sb.ToString());
+        LogHead(when + " L");
+    }
+
+    // Kamera und ihre Ahnen, eine Zeile, eine Momentaufnahme. Angekert an
+    // Camera.main, nicht an Knotennamen. forward ist die Blickrichtung als
+    // Vektor - unabhaengig von der Euler-Zerlegung.
+    private void LogHead(string when)
+    {
+        var sb = new StringBuilder($"{when}: KOPF f={Time.frameCount} ts={Time.timeScale:F2} focus={Application.isFocused}");
+        try
+        {
             var cam = Camera.main;
-            if (cam == null) sb.Append(" | Kopf: Camera.main=null");
+            if (cam == null) sb.Append(" | Camera.main=null");
             else
             {
                 var t = cam.transform;
-                sb.Append($" | {t.name}: lp={t.localPosition:F3} le={t.localEulerAngles:F1}");
-                var p = t.parent;
-                if (p != null)
-                {
+                sb.Append($" | {t.name}: lp={t.localPosition:F3} le={t.localEulerAngles:F1} fwd={t.forward:F3} we={t.eulerAngles:F1}");
+                int depth = 0;
+                for (var p = t.parent; p != null && depth < 4; p = p.parent, depth++)
                     sb.Append($" | {p.name}: lp={p.localPosition:F3} le={p.localEulerAngles:F1}");
-                    var pp = p.parent;
-                    if (pp != null)
-                        sb.Append($" | {pp.name}: wp={pp.position:F3} we={pp.eulerAngles:F1}");
-                }
-                sb.Append($" | cam world e={t.eulerAngles:F1}");
             }
         }
-        catch (Exception e) { sb.Append(" | Kopf Lesefehler " + e.GetType().Name + ": " + e.Message); }
-
+        catch (Exception e) { sb.Append(" | Lesefehler " + e.GetType().Name + ": " + e.Message); }
         LoggerInstance.Msg(sb.ToString());
     }
 
