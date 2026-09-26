@@ -1,0 +1,72 @@
+# Wet Reality XR Mod
+#
+# Entscheidung: nur der Code. Das Arbeitsprotokoll, die Messungen und die
+# Patchskripte bleiben draussen, ebenso alles Fremde und alles Gebaute.
+# Von 405 MB im Arbeitsverzeichnis bleiben damit die paar MB, die das Projekt
+# ausmachen.
+
+# ------------------------------------------------------------- Bauergebnisse
+bin/
+obj/
+
+# Die fertigen Pakete. Sie gehoeren zu den Releases auf GitHub, nicht in die
+# Versionsgeschichte: 221 MB, und jedes einzelne ist aus dem Code reproduzierbar.
+dist/
+
+# ------------------------------------------------- Fremdes, mit eigener Lizenz
+#
+# MelonLoader, UnityExplorer, OpenXR als Binaerpakete (112 MB) und der
+# Quellcode von UniverseLib (30 MB). Beides ist nicht dieses Projekt und
+# steht unter eigenen Lizenzen - es wird bezogen, nicht mitgeliefert.
+tools/downloads/
+tools/source-inspection/
+
+# ------------------------------------------ Arbeitsprotokoll und Messungen
+#
+# Bewusst aussen vor. Das Designdokument ist das Gedaechtnis des Projekts und
+# bleibt lokal; die Logs tragen lokale Pfade.
+Wet Reality Design Document.txt
+diagnostics/
+backups/
+
+# Die Patch- und Dokumentationsskripte. Jedes gehoert zu genau einer
+# Aenderung, die im Code schon steht.
+tools/*.py
+tools/*.pl
+
+# Bei jedem Lauf von render-ui.ps1 neu erzeugt.
+tools/ui-preview-*.png
+
+# Die echte Lage des Spiels auf DIESEM Rechner. MSBuild importiert die Datei
+# vom Projektverzeichnis aus nach oben, also vor dem Projektrumpf, und der dort
+# gesetzte GamePath gewinnt gegen die generische Vorgabe in der .csproj.
+# Directory.Build.props.example wird verfolgt und zeigt die Form.
+Directory.Build.props
+
+# ----------------------------------------------------------- lokale Sitzung
+.claude/
+start_claude.ps1
+
+# ------------------------------------------------------------------ Windows
+Thumbs.db
+desktop.ini
+*.bak
+*.tmp
+
+# ----------------------------------- Handbuch und offene Punkte, aus demselben
+# Grund wie das Designdokument: sie sind daraus abgeleitet und gehoeren zum
+# lokalen Gedaechtnis des Projekts. Sollen sie ins Repository, reichen zwei
+# geloeschte Zeilen - sie tragen keine lokalen Pfade.
+Wet Reality Handbuch.md
+Wet Reality Offene Punkte.md
+
+# Gesicherte Spiellogs - MelonLoader rotiert nach Namen, darum werden sie
+# lokal gesichert. Sie gehoeren nicht ins Repo (11 MB und schnell mehr).
+logs-archive/
+
+# Python-Bytecode der Einwegskripte aus tools/.
+__pycache__/
+
+# Die PWS2-Referenzkopie. Nur Nachschlagewerk, liegt im PWS2-Projekt
+# versioniert und wird hier nicht noch einmal eingecheckt.
+reference/
