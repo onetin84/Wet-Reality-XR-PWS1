@@ -14,15 +14,29 @@
 // Die Taste kommt ueber GetAsyncKeyState, nicht UnityEngine.Input: das Spiel
 // nutzt das neue Input System, ob der alte Eingabeweg aktiv ist, ist
 // ungemessen.
+//
+// 0.1.0 hat gezeigt: die Session laeuft bis FOCUSED, das Headset bleibt
+// schwarz, Camera.main ist im Hauptmenue null (Handbuch 2). 0.2.0 aendert
+// nichts am Spiel und misst nur zweierlei:
+//   - alle Szenenkameras (auch inaktive): Pfad, aktiv, Tag, Zielauge,
+//     RenderTexture, stereoEnabled, depth, URP-renderType, Stapel. Voll
+//     gelistet beim Start und immer dann, wenn sich die Liste aendert -
+//     ein Zustand, der sich aufbauen kann, wird nicht einmalig abgegriffen.
+//   - "[XR] SetOutput Failed." pro Frame, gezaehlt im mitgelesenen
+//     Player.log, damit sich zeigt, ob die Meldung im Frametakt kommt.
 
 using System.Runtime.InteropServices;
+using System.Text;
 using MelonLoader;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.1.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.2.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -39,9 +53,16 @@ public sealed class XRStart : MelonMod
     private float reportUntil;
     private float nextReport;
 
+    private const string SetOutputMarker = "SetOutput Failed";
+    private long logOffset = -1;
+    private int lastFrame;
+    private string lastCameraSignature = "";
+
     public override void OnInitializeMelon()
     {
         LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn");
+        CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
+        lastFrame = Time.frameCount;
     }
 
     public override void OnUpdate()
@@ -72,6 +93,20 @@ public sealed class XRStart : MelonMod
     {
         var manager = DescribeManager("vor dem Start");
         if (manager == null) return;
+        LoggerInstance.Msg("vor dem Start: " + SetOutputRate());
+        string pipeline;
+        try
+        {
+            var rp = GraphicsSettings.currentRenderPipeline;
+            pipeline = rp == null ? "null" : $"'{rp.name}' ({rp.GetIl2CppType().FullName})";
+        }
+        catch (Exception e)
+        {
+            pipeline = "Lesefehler " + e.GetType().Name + ": " + e.Message;
+        }
+        LoggerInstance.Msg("vor dem Start: currentRenderPipeline=" + pipeline);
+        lastCameraSignature = "";
+        ReportCameras("vor dem Start");
 
         try
         {
@@ -186,6 +221,108 @@ public sealed class XRStart : MelonMod
 
         LoggerInstance.Msg($"{when}: XRSettings.enabled={XRSettings.enabled}, isDeviceActive={XRSettings.isDeviceActive}, " +
             $"device='{XRSettings.loadedDeviceName}', eye={XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}, " +
-            $"display {display}, runtime {runtime}, {camera}");
+            $"display {display}, runtime {runtime}, {camera}, {SetOutputRate()}");
+        ReportCameras(when);
+    }
+
+    // "N SetOutput in F Frames" seit dem letzten Aufruf.
+    private string SetOutputRate()
+    {
+        int frames = Time.frameCount - lastFrame;
+        lastFrame = Time.frameCount;
+        int n = CountSetOutput();
+        return n < 0 ? $"SetOutput: Player.log unlesbar, {frames} Frames" : $"SetOutput {n} in {frames} Frames";
+    }
+
+    // Liest Player.log ab dem letzten Offset. -1 = Lesefehler, nicht "keine
+    // Meldung". Ein Treffer, der genau ueber die Lesegrenze faellt, geht
+    // verloren - fuer eine Rate ohne Belang.
+    private int CountSetOutput()
+    {
+        try
+        {
+            string path = Application.consoleLogPath;
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (logOffset < 0 || logOffset > fs.Length) logOffset = fs.Length;
+            fs.Seek(logOffset, SeekOrigin.Begin);
+            using var reader = new StreamReader(fs, Encoding.UTF8);
+            string text = reader.ReadToEnd();
+            logOffset = fs.Length;
+            int count = 0;
+            for (int i = text.IndexOf(SetOutputMarker, StringComparison.Ordinal); i >= 0;
+                 i = text.IndexOf(SetOutputMarker, i + SetOutputMarker.Length, StringComparison.Ordinal))
+                count++;
+            return count;
+        }
+        catch (Exception e)
+        {
+            LoggerInstance.Warning("Player.log: " + e.GetType().Name + ": " + e.Message);
+            return -1;
+        }
+    }
+
+    // Alle Kameras in geladenen Szenen, auch inaktive. Volle Liste nur, wenn
+    // sie sich gegen den letzten Aufruf geaendert hat.
+    private void ReportCameras(string when)
+    {
+        var lines = new List<string>();
+        try
+        {
+            var scenes = new List<string>();
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+                scenes.Add(SceneManager.GetSceneAt(i).name);
+            lines.Add("Szenen: [" + string.Join(", ", scenes) + "], aktiv '" + SceneManager.GetActiveScene().name + "'");
+
+            var all = Resources.FindObjectsOfTypeAll<Camera>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                var cam = all[i];
+                if (cam == null) continue;
+                var go = cam.gameObject;
+                var scene = go.scene;
+                if (!scene.IsValid()) continue;   // Prefab-Assets, keine Szenenobjekte
+                lines.Add("  " + DescribeCamera(cam, go, scene.name));
+            }
+        }
+        catch (Exception e)
+        {
+            lines.Add("Kameraliste: Lesefehler " + e.GetType().Name + ": " + e.Message);
+        }
+
+        string signature = string.Join("\n", lines);
+        if (signature == lastCameraSignature) return;
+        lastCameraSignature = signature;
+        LoggerInstance.Msg($"{when}: Kameras ({lines.Count - 1}):");
+        foreach (var l in lines) LoggerInstance.Msg("  " + l);
+    }
+
+    private static string DescribeCamera(Camera cam, GameObject go, string sceneName)
+    {
+        var path = new StringBuilder(go.name);
+        for (var t = go.transform.parent; t != null; t = t.parent)
+            path.Insert(0, t.name + "/");
+
+        var rt = cam.targetTexture;
+        string target = rt == null ? "Bildschirm" : $"RT '{rt.name}' {rt.width}x{rt.height}";
+
+        string urp;
+        try
+        {
+            var data = cam.GetComponent<UniversalAdditionalCameraData>();
+            if (data == null) urp = "keine URP-Daten";
+            else
+            {
+                var stack = data.renderType == CameraRenderType.Base ? data.cameraStack : null;
+                urp = $"{data.renderType}, Stapel {(stack == null ? 0 : stack.Count)}";
+            }
+        }
+        catch (Exception e)
+        {
+            urp = "URP Lesefehler " + e.GetType().Name;
+        }
+
+        return $"[{sceneName}] {path} | activeInHierarchy={go.activeInHierarchy} enabled={cam.enabled} tag={go.tag} " +
+            $"eye={cam.stereoTargetEye} ziel={target} stereoEnabled={cam.stereoEnabled} depth={cam.depth} " +
+            $"display={cam.targetDisplay} mask=0x{cam.cullingMask:X8} {urp}";
     }
 }

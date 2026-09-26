@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0</AssemblyVersion>
-    <FileVersion>0.1.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0</AssemblyVersion>
+    <FileVersion>0.2.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
@@ -29,6 +29,9 @@
     <!-- Die managed XR-Schicht ist in PWS1 einkompiliert (Handbuch 1.2) -
          anders als bei PWS2 wird sie hier nur aufgerufen, nicht nachgebaut. -->
     <Reference Include="Unity.XR.Management" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.XR.Management.dll" Private="false" />
+    <!-- Nur fuer den Kameradump: renderType (Base/Overlay) steht an
+         UniversalAdditionalCameraData, nicht an der Kamera. -->
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
     <Reference Include="Unity.XR.OpenXR" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.XR.OpenXR.dll" Private="false" />
   </ItemGroup>
 </Project>
