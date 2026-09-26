@@ -91,6 +91,10 @@
 // LateUpdate-Pose liegt im Mittel 0,2-0,5 Grad (bis 2,4) hinter der
 // Render-Pose, 20-35 % der Kopfbewegung eines Frames (Handbuch 2.8). 0.6.3:
 // onBeforeRender ist die Vorgabe, F6 schaltet zurueck.
+//
+// 0.7.0: Pistolenmessung im F9-Fenster, schreibt NICHTS an der Pistole
+// (GunProbe.cs). Der Kopf bleibt wie 0.6.3. 0.7.1: dazu Spielerposition,
+// Rig/RigOffset lokal und Anker relativ zur Kamera - 0.7.0 lief im Stillstand.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -108,12 +112,12 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.6.3", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "0.7.3", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
 
-public sealed class XRStart : MelonMod
+public sealed partial class XRStart : MelonMod
 {
     private const int VK_F7 = 0x76;
     private const int VK_F8 = 0x77;
@@ -181,8 +185,12 @@ public sealed class XRStart : MelonMod
         lastFrame = Time.frameCount;
         HookDeviceChanges();
         PatchCameraController();
+        PatchGunWriters();
         self = this;
         HookBeforeRender();   // seit 0.6.2 auch Schreibpunkt, nicht nur F9-Messung
+        // Das 0x0001-Bit kann von einem frueheren Druck stehen (auch in einem
+        // anderen Programm) - einmal ablesen, damit F8 nicht von selbst startet.
+        foreach (int vk in new[] { VK_F6, VK_F7, VK_F8, VK_F9 }) GetAsyncKeyState(vk);
     }
 
     // Nur Zaehler und Lesungen, kein Eingriff: Prefix gibt nichts zurueck,
@@ -305,7 +313,10 @@ public sealed class XRStart : MelonMod
         // Nur der erste Aufruf des Messframes: das ist der Stand, mit dem
         // gerendert wird.
         if (sampleOpen && Time.frameCount == sampleFrame && sR == "-")
+        {
             sR = ReadHead();
+            sGunR = ReadGun();
+        }
     }
 
     // Kopfpose zum zweiten Mal im Frame, kurz vor dem Rendern. Das Input
@@ -390,24 +401,40 @@ public sealed class XRStart : MelonMod
         int frames = Time.frameCount - windowFrame;
         LoggerInstance.Msg($"ref t+{Time.unscaledTime - refStart:F0}s KOPF f={sampleFrame} XR={(started ? "an" : "aus")} | U {sU} | pre {sPre} | post {sPost} | L {sL} | R {sR} | " +
             $"UpdateRotation {sRotCalls} im Frame, {rotCalls} in {frames} Frames | UpdateLookDirection {lookCalls} in {frames} Frames{sLook}");
+        FlushGun(sampleFrame, frames);
         rotCalls = lookCalls = 0;
         windowFrame = Time.frameCount;
+        if (Time.unscaledTime >= refUntil) gunProbeOn = false;   // Fensterende: Patches wieder nur Durchlauf
+    }
+
+    // Flanke der Taste. 0x8000 = jetzt unten, 0x0001 = seit der letzten
+    // Abfrage gedrueckt - faengt einen kurzen Druck, waehrend der Hauptthread
+    // hing (0.5.0 und 0.7.1 kam F9 nie an, ohne Spur im Log). Ohne Fokus
+    // wird der Druck gemeldet statt still verworfen.
+    private bool KeyPressed(int vk, ref bool wasDown, string name)
+    {
+        short st = GetAsyncKeyState(vk);
+        bool down = (st & 0x8000) != 0;
+        bool edge = (down && !wasDown) || (!down && (st & 0x0001) != 0);
+        wasDown = down;
+        if (!edge) return false;
+        if (!Application.isFocused)
+        {
+            LoggerInstance.Msg($"{name}: gedrueckt, aber Spielfenster ohne Fokus - ignoriert");
+            return false;
+        }
+        return true;
     }
 
     public override void OnUpdate()
     {
-        bool down = (GetAsyncKeyState(VK_F8) & 0x8000) != 0;
-        bool pressed = down && !keyWasDown && Application.isFocused;
-        keyWasDown = down;
-
-        if (pressed)
+        if (KeyPressed(VK_F8, ref keyWasDown, "F8"))
         {
             if (started) Stop("F8");
             else Start();
         }
 
-        bool f9 = (GetAsyncKeyState(VK_F9) & 0x8000) != 0;
-        if (f9 && !f9WasDown && Application.isFocused)
+        if (KeyPressed(VK_F9, ref f9WasDown, "F9"))
         {
             refStart = Time.unscaledTime;
             refUntil = refStart + ReferenceSeconds;
@@ -415,13 +442,12 @@ public sealed class XRStart : MelonMod
             LoggerInstance.Msg($"F9: Kopfmessung {ReferenceSeconds:F0} s, XR {(started ? "LAEUFT" : "aus")} - Maus bewegen, mit XR auch den Kopf");
             HookBeforeRender();
             ReportController();
+            ReportGun();
             rotCalls = lookCalls = 0;
             windowFrame = Time.frameCount;
         }
-        f9WasDown = f9;
 
-        bool f7 = (GetAsyncKeyState(VK_F7) & 0x8000) != 0;
-        if (f7 && !f7WasDown && Application.isFocused)
+        if (KeyPressed(VK_F7, ref f7WasDown, "F7"))
         {
             if (writeHead) StopWriting("F7");
             else if (!started) LoggerInstance.Msg("F7: XR laeuft nicht - erst F8");
@@ -434,15 +460,12 @@ public sealed class XRStart : MelonMod
                 LoggerInstance.Msg("F7: Kopf schreiben AN (Maus-Pitch verworfen, Maus-Yaw = Koerper)");
             }
         }
-        f7WasDown = f7;
 
-        bool f6 = (GetAsyncKeyState(VK_F6) & 0x8000) != 0;
-        if (f6 && !f6WasDown && Application.isFocused)
+        if (KeyPressed(VK_F6, ref f6WasDown, "F6"))
         {
             writeAtRender = !writeAtRender;
             LoggerInstance.Msg($"F6: Schreibpunkt jetzt {(writeAtRender ? "onBeforeRender" : "OnLateUpdate")}");
         }
-        f6WasDown = f6;
 
         // Erst den Messframe des letzten Durchgangs ausgeben, dann ggf. einen
         // neuen oeffnen. U ist der Stand vor den Update-Schreibern des Spiels.
@@ -454,6 +477,8 @@ public sealed class XRStart : MelonMod
             sampleFrame = Time.frameCount;
             sampleOpen = true;
             sU = ReadHead();
+            sGunU = ReadGun();
+            sGunL = sGunR = "-";
             sPre = sPost = sL = sR = "-";
             sLook = "";
             sRotCalls = 0;
@@ -484,7 +509,10 @@ public sealed class XRStart : MelonMod
             if (!writeAtRender) DriveHead();
         }
         if (sampleOpen && Time.frameCount == sampleFrame)
+        {
             sL = ReadHead();
+            sGunL = ReadGun();
+        }
     }
 
     private void DriveHead()
@@ -511,7 +539,7 @@ public sealed class XRStart : MelonMod
             {
                 headPoseBase = pos;
                 haveBase = true;
-                LoggerInstance.Msg($"KOPF-SCHREIBEN: Basis hmd={pos:F3}, headTurnRest={headTurnRest:F3}");
+                LoggerInstance.Msg($"KOPF-SCHREIBEN: Basis hmd={pos.ToString("F3")}, headTurnRest={headTurnRest.ToString("F3")}");
             }
 
             // Vor dem ersten Schreiben (je Einschalten und je Controller) ist
@@ -540,9 +568,9 @@ public sealed class XRStart : MelonMod
                 // Spiel hat den eigenen Schreibzugriff gelesen. mausYaw ist die
                 // Summe seit der letzten Zeile, die in bodyYaw eingeht.
                 LoggerInstance.Msg($"KOPF-SCHREIBEN f={Time.frameCount} n={headWrites} | Spiel vorher y={gameYaw:F1} H={headCtl!.HorizontalLookRotation:F1} " +
-                    $"bodyYaw={bodyYaw:F1} mausYaw/s={mouseYawSum:F1} Maus-Pitch(verworfen)={headCtl.VerticalLookRotation:F1} | hmd pos={pos:F3} rot={rot.eulerAngles:F1} | " +
-                    $"geschrieben HeadTurn lp={headTurn.localPosition:F3} le={headTurn.localEulerAngles:F1} PlayerCamera le={headCam.localEulerAngles:F1} | " +
-                    $"Kamera we={headCam.eulerAngles:F1} wp={headCam.position:F2}");
+                    $"bodyYaw={bodyYaw:F1} mausYaw/s={mouseYawSum:F1} Maus-Pitch(verworfen)={headCtl.VerticalLookRotation:F1} | hmd pos={pos.ToString("F3")} rot={rot.eulerAngles.ToString("F1")} | " +
+                    $"geschrieben HeadTurn lp={headTurn.localPosition.ToString("F3")} le={headTurn.localEulerAngles.ToString("F1")} PlayerCamera le={headCam.localEulerAngles.ToString("F1")} | " +
+                    $"Kamera we={headCam.eulerAngles.ToString("F1")} wp={headCam.position.ToString("F2")}");
                 // Schreibpunkt und wie alt die LateUpdate-Pose gegen die
                 // Render-Pose ist, verglichen mit der Kopfbewegung selbst.
                 LoggerInstance.Msg($"KOPF-TAKT f={Time.frameCount} Schreibpunkt={(writeAtRender ? "onBeforeRender" : "OnLateUpdate")} | " +
@@ -586,7 +614,7 @@ public sealed class XRStart : MelonMod
             restFor = h.Pointer;
             haveBase = false;
         }
-        LoggerInstance.Msg($"KOPF-SCHREIBEN: gebunden HeadTurn='{h.name}' PlayerCamera='{v.name}' rest={headTurnRest:F3}");
+        LoggerInstance.Msg($"KOPF-SCHREIBEN: gebunden HeadTurn='{h.name}' PlayerCamera='{v.name}' rest={headTurnRest.ToString("F3")}");
         return true;
     }
 
@@ -835,10 +863,10 @@ public sealed class XRStart : MelonMod
             else
             {
                 var t = cam.transform;
-                sb.Append($" | {t.name}: lp={t.localPosition:F3} le={t.localEulerAngles:F1} fwd={t.forward:F3} we={t.eulerAngles:F1}");
+                sb.Append($" | {t.name}: lp={t.localPosition.ToString("F3")} le={t.localEulerAngles.ToString("F1")} fwd={t.forward.ToString("F3")} we={t.eulerAngles.ToString("F1")}");
                 int depth = 0;
                 for (var p = t.parent; p != null && depth < 4; p = p.parent, depth++)
-                    sb.Append($" | {p.name}: lp={p.localPosition:F3} le={p.localEulerAngles:F1}");
+                    sb.Append($" | {p.name}: lp={p.localPosition.ToString("F3")} le={p.localEulerAngles.ToString("F1")}");
             }
         }
         catch (Exception e) { sb.Append(" | Lesefehler " + e.GetType().Name + ": " + e.Message); }
