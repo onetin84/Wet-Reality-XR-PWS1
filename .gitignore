@@ -70,3 +70,10 @@ __pycache__/
 # Die PWS2-Referenzkopie. Nur Nachschlagewerk, liegt im PWS2-Projekt
 # versioniert und wird hier nicht noch einmal eingecheckt.
 reference/
+
+# Statische Messergebnisse (Il2CppDumper-Ausgabe ~200 MB, Scan-Protokolle).
+# Aus dem Spiel reproduzierbar, gehoeren nicht ins Repo.
+tools/dump-out/
+tools/*.out.json
+tools/*.out.txt
+tools/*.log
