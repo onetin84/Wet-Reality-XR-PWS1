@@ -119,6 +119,7 @@ public sealed partial class XRStart
                 var origin = pubAsmPos + pubAsmRot * relPos;
                 var dir = pubAsmRot * relDir;
                 if (i == 0) sb.Append($"spiel o={r.Origin.ToString("F3")} d={r.Direction.ToString("F3")} -> o={origin.ToString("F3")} d={dir.ToString("F3")} | Duese lp={rs.parent?.localPosition.ToString("F3")}");
+                if (i == 0) { pubNozzleOrigin = origin; pubNozzleDir = dir; pubNozzleReady = true; }   // fuer den Kontaktstrahl der Haptik
                 r.Origin = origin;
                 r.Direction = dir;
                 arr[i] = r;   // ZURUECKSCHREIBEN - der Indexer gab eine Kopie

@@ -91,6 +91,26 @@ public sealed partial class XRStart
             // Gehen und Sprint
             var ls = Stick(l);
             var mv = ls == null ? Vector2.zero : ls.ReadValue();
+
+            // Tragen + linker Griff: der linke Stick dreht das Objekt, das Gehen
+            // steht still (PWS2 DriveItemRotation). PWS1-Weg wie
+            // PlayerInput.RotateClockwise/-Anticlockwise (0x9EFEA0/0x9EFF60):
+            // wenn !BlockedInput, GameEvents.Rotating(-1 / +1). Pro Frame mit der
+            // Auslenkung skaliert, aus der Totzone heraus weich.
+            if (pi_CarryAndGrip(__instance, l))
+            {
+                float x = mv.x;
+                if (Math.Abs(x) > TurnDeadZone && !__instance.BlockedInput)
+                {
+                    float s = (Math.Abs(x) - TurnDeadZone) / (1f - TurnDeadZone);
+                    // Faktor 2 seit 1.5.0: 1.4.0 war im Headset "zu langsam". Die
+                    // Einheit von Rotating ist ungemessen (PWS2: 90 Grad/s).
+                    Il2CppPWS.GameEvents.Rotating?.Invoke(-Math.Sign(x) * s * RotateFactor);   // rechts = im Uhrzeigersinn = -1
+                    rotateFrames++;
+                }
+                mv = Vector2.zero;   // Gehen ruht, einmal auf 0 (unten)
+            }
+
             if (mv.magnitude > MoveDeadZone)
             {
                 __instance.MovementRaw = mv;
@@ -263,6 +283,7 @@ public sealed partial class XRStart
             {
                 fireLatched = !fireLatched;
                 btnEvents.Add($"Griff rechts: Dauerspruehen {(fireLatched ? "AN" : "AUS")}");
+                Buzz(true, fireLatched ? "Dauerspruehen an" : "Dauerspruehen aus");
             }
 
             if (Edge(l, "L", "triggerPressed") && Free(pi, "Trigger links Duese drehen"))
@@ -346,6 +367,50 @@ public sealed partial class XRStart
         if (charCtl != null) LoggerInstance.Msg($"STEUERUNG: Charakter '{charCtl.gameObject.name}', Haltung {charCtl.CharacterCrouchState}");
     }
 
+    private static int rotateFrames;
+    private const float RotateFactor = 2f;
+    internal static bool SprayingNow => weFire || fireLatched;
+    private static bool lastCarry;
+
+    private static bool pi_CarryAndGrip(Il2CppPWS.PlayerInput pi, XRController? l)
+    {
+        bool carry = pi.CarryItem;
+        if (carry != lastCarry)
+        {
+            lastCarry = carry;
+            Buzz(false, carry ? "aufgenommen" : "abgelegt");   // PWS2: pickup / place, Off-Hand
+        }
+        if (!carry) return false;
+        var g = Axis(l, "grip");
+        return g != null && g.ReadValue() > 0.6f;
+    }
+
+    // ---- Vibration (PWS2 Haptics / Buzz) ----------------------------------
+    // PWS2 pulste ueber eigene OpenXR-Actions (XRBoot). Hier das Input System:
+    // OculusTouchControllerOpenXR ist ein XRControllerWithRumble. Amplitude 1,
+    // 0,25 s wie PWS2 (HapticAmplitude / HapticSeconds). Gepulst wird die
+    // HANDELNDE Hand: Off-Hand fuer Zeigestrahl und Aufnehmen, rechts fuer das
+    // Dauerspruehen.
+    private const float HapticAmplitude = 1f, HapticSeconds = 0.25f;
+    private static int buzzSent, buzzRefused;
+
+    internal static void Buzz(bool right, string why)
+    {
+        try
+        {
+            var c = right ? XRController.rightHand : XRController.leftHand;
+            var r = c == null ? null : c.TryCast<XRControllerWithRumble>();
+            if (r == null) { buzzRefused++; if (buzzRefused <= 3) btnEvents.Add($"Vibration {why}: kein XRControllerWithRumble"); return; }
+            // Rechts laeuft durch die Warteschlange der Strahl-Haptik, sonst
+            // ueberschreibt die naechste Nachsendung den Impuls (PWS2).
+            if (right) QueueSpray(HapticAmplitude, HapticSeconds);
+            else r.SendImpulse(HapticAmplitude, HapticSeconds);
+            buzzSent++;
+            btnEvents.Add($"Vibration {(right ? "rechts" : "links")}: {why}");
+        }
+        catch (Exception e) { btnEvents.Add($"Vibration {why}: Ausnahme {e.GetType().Name}: {e.Message}"); }
+    }
+
     private static void Release(Il2CppPWS.PlayerInput pi)
     {
         fireLatched = false;
@@ -389,9 +454,9 @@ public sealed partial class XRStart
     // Einmal pro Sekunde, im Kopf-Takt.
     private string InputStatus()
     {
-        var s = $"STEUERUNG {(inputOn ? "AN" : "AUS")} | PlayerInput.Update {piCalls}x | Frames mit Fire {fireFrames} Gehen {moveFrames} Sprint {sprintFrames} | " +
+        var s = $"STEUERUNG {(inputOn ? "AN" : "AUS")} | PlayerInput.Update {piCalls}x | Frames mit Fire {fireFrames} Gehen {moveFrames} Sprint {sprintFrames} Drehen-Objekt {rotateFrames} | " +
             $"Drehen {turnSum:F1}° | {inputLast} || {ButtonProbeStatus()}";
-        piCalls = fireFrames = moveFrames = sprintFrames = 0;
+        piCalls = fireFrames = moveFrames = sprintFrames = rotateFrames = 0;
         turnSum = 0f;
         return s;
     }

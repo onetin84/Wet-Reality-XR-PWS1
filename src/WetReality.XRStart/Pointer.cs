@@ -202,12 +202,20 @@ public sealed partial class XRStart
 
     private void DrawLine(Vector3 origin, Vector3 forward)
     {
+        // Beim Spruehen aus (PWS2 grabPointerWhileSpraying = false), OHNE das
+        // Ziel zu vergessen: nach dem Loslassen pulst es nur bei einem Wechsel.
+        if (SprayingNow)
+        {
+            if (pointerLine != null && pointerLine.enabled) pointerLine.enabled = false;
+            return;
+        }
         var item = SelectedItem();
         bool has = item != null;
         if (has != lastHasTarget)
         {
             lastHasTarget = has;
             LoggerInstance.Msg(has ? $"ZEIGER: Ziel '{item!.gameObject.name}' ({item.GetIl2CppType().Name})" : "ZEIGER: kein Ziel");
+            Buzz(false, has ? "Ziel erfasst" : "Ziel verloren");   // PWS2 grab ready / grab lost
         }
         if (!has) { HideLine(); return; }
 
@@ -259,7 +267,7 @@ public sealed partial class XRStart
     private void HideLine()
     {
         if (pointerLine != null && pointerLine.enabled) pointerLine.enabled = false;
-        if (lastHasTarget) { lastHasTarget = false; LoggerInstance.Msg("ZEIGER: kein Ziel"); }
+        if (lastHasTarget) { lastHasTarget = false; LoggerInstance.Msg("ZEIGER: kein Ziel"); Buzz(false, "Ziel verloren"); }
     }
 
     private void ReleasePointer()

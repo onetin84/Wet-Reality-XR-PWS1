@@ -106,6 +106,10 @@
 // 1.3.0: X zielt mit der Off-Hand, Linie nur mit Ziel; Sprint nur im Stehen.
 // 1.3.1: X loest auch GameEvents.PickUpInput aus; Strahlende an festen Collidern.
 // 1.3.2: Tragen mit der linken Hand; Strahlende immer auf dem Strahl.
+// 1.4.0: Vibration (Ziel, Aufnehmen/Ablegen, Dauerspruehen); Objekt drehen mit
+//        linkem Griff + linkem Stick beim Tragen.
+// 1.5.0: Strahl-Haptik (PWS2 SprayHaptics), Zeigestrahl beim Spruehen aus,
+//        Objekt drehen doppelt so schnell.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -123,7 +127,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.3.2", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.5.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -345,6 +349,7 @@ public sealed partial class XRStart : MelonMod
         if (writeHead) DriveOffHandPointer();   // X zielt mit der linken Hand (Pointer.cs)
         // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
         if (writeGun) { DriveGun(); ApplyGunFixes(); }
+        DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
     }
 
     private void MeasurePoseGap()
