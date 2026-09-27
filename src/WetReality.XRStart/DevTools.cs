@@ -45,6 +45,8 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<bool> prefAutoStart = null!, prefSkipContinue = null!, prefCheats = null!;
     private MelonPreferences_Entry<string> prefMirror = null!;
     private MelonPreferences_Entry<float> prefInteractionRange = null!;
+    private MelonPreferences_Entry<bool> prefHands = null!;
+    private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
 
     private void InitDevTools()
     {
@@ -54,7 +56,16 @@ public sealed partial class XRStart
         prefCheats = cat.CreateEntry("DevCheats", true, description: "Guthaben auffuellen und Jobs freischalten - schreibt in den Spielstand");
         prefMirror = cat.CreateEntry("DesktopMirror", "left", description: "Headsetbild auf dem Monitor: left, right, both oder off");
         prefInteractionRange = cat.CreateEntry("InteractionRange", 5f, description: "Meter ab der linken Hand, in denen Objekte zum Aufnehmen gefunden werden (PWS2: 5)");
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1}");
+        prefHands = cat.CreateEntry("ShowVrHands", true, description: "VR-Haende des Spiels an den Controllern, Spielarme ausgeblendet");
+        prefHandRPos = cat.CreateEntry("HandRightPos", "0.03,0.03,-0.14", description: "Pistolenhand Versatz in Metern (x rechts, y oben, z vorn), in der Handdrehung");
+        prefHandRRot = cat.CreateEntry("HandRightRot", "-15,0,-80", description: "Pistolenhand Drehung in Grad (x, y, z)");
+        prefHandLPos = cat.CreateEntry("HandLeftPos", "-0.04,0,-0.08", description: "Freie Hand Versatz in Metern (x rechts, y oben, z vorn)");
+        prefHandLRot = cat.CreateEntry("HandLeftRot", "70,20,90", description: "Freie Hand Drehung in Grad (x, y, z)");
+        handRPos = ParseVec(prefHandRPos.Value, new Vector3(0.03f, 0.03f, -0.14f), "HandRightPos");
+        handRRot = ParseVec(prefHandRRot.Value, new Vector3(-15f, 0f, -80f), "HandRightRot");
+        handLPos = ParseVec(prefHandLPos.Value, new Vector3(-0.04f, 0f, -0.08f), "HandLeftPos");
+        handLRot = ParseVec(prefHandLRot.Value, new Vector3(70f, 20f, 90f), "HandLeftRot");
+        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 

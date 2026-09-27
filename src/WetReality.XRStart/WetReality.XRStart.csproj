@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>1.10.0</Version>
-    <AssemblyVersion>1.10.0</AssemblyVersion>
-    <FileVersion>1.10.0</FileVersion>
+    <Version>1.11.0</Version>
+    <AssemblyVersion>1.11.0</AssemblyVersion>
+    <FileVersion>1.11.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
@@ -43,14 +43,18 @@
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.PhysicsModule.dll" Private="false" />
     <!-- 0.7.0: EquipmentManager erbt von MLAPI.NetworkBehaviour. -->
     <Reference Include="Unity.Multiplayer.MLAPI.Runtime" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.Multiplayer.MLAPI.Runtime.dll" Private="false" />
-    <!-- 1.7.0: Canvas/CanvasGroup fuer die Menue-Messung. -->
-    <!-- 1.8.0: UnityEngine.UI.Graphic fuer den ZTest der UI-Materialien. -->
-    <!-- 1.9.0: TMP_Text fuer die Beschriftung der Menueziele im Log. -->
-    <Reference Include="Unity.TextMeshPro" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.TextMeshPro.dll" Private="false" />
-    <Reference Include="UnityEngine.UI" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.UI.dll" Private="false" />
-    <Reference Include="UnityEngine.UIModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.UIModule.dll" Private="false" />
     <!-- 1.6.0: SaveManager erbt von FuturLabs SingletonMonoBehaviour. -->
     <Reference Include="Il2CppFuturLab" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2CppFuturLab.dll" Private="false" />
+    <!-- 1.7.0: Canvas/CanvasGroup fuer die Menue-Messung. -->
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.UIModule.dll" Private="false" />
+    <!-- 1.8.0: UnityEngine.UI.Graphic fuer den ZTest der UI-Materialien. -->
+    <Reference Include="UnityEngine.UI" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.UI.dll" Private="false" />
+    <!-- 1.9.0: TMP_Text fuer die Beschriftung der Menueziele im Log. -->
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.TextMeshPro.dll" Private="false" />
+    <!-- 1.11.0: VR-Haende aus den Addressables des Spiels (Animator fuer Stufe 2). -->
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="Unity.Addressables" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.Addressables.dll" Private="false" />
+    <Reference Include="Unity.ResourceManager" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.ResourceManager.dll" Private="false" />
     <Reference Include="Il2CppInterop.Common" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Common.dll" Private="false" />
   </ItemGroup>
 </Project>
