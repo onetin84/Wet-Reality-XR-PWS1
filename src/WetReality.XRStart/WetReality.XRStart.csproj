@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>1.11.0</Version>
-    <AssemblyVersion>1.11.0</AssemblyVersion>
-    <FileVersion>1.11.0</FileVersion>
+    <Version>1.13.0</Version>
+    <AssemblyVersion>1.13.0</AssemblyVersion>
+    <FileVersion>1.13.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />

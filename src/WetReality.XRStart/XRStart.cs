@@ -133,6 +133,8 @@
 // 1.9.9: keine veralteten Grenzen - Hover sofort statt nach 2-3 s.
 // 1.10.0: Interaktionsreichweite aus der Hand 5 m wie PWS2 (InteractionRange).
 // 1.11.0: VR-Haende des Spiels an den Controllern, Spielarme aus (VrHands.cs).
+// 1.12.0: Fingerposen ueber die Animator-Parameter des Spiels, folgen den Controllern (HandPoses.cs).
+// 1.13.0: Himmel - Messung und SkyFix, F2 (SkyFix.cs); rechte Hand feste Griffpose wie PWS2.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -150,7 +152,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.11.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.13.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -219,7 +221,7 @@ public sealed partial class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F3 = Controller-Steuerung an/aus, F9 = 20 s Kopfmessung, F1 = Spiegel gameViewRenderMode, F2 = Spiegel PreferredMirrorBlitMode, F10 = UI im Headset an/aus");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F3 = Controller-Steuerung an/aus, F9 = 20 s Kopfmessung, F1 = Spiegel gameViewRenderMode, F2 = Himmel off/solid/skybox, F10 = UI im Headset an/aus");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
@@ -375,6 +377,7 @@ public sealed partial class XRStart : MelonMod
         // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
         if (writeGun) { DriveGun(); ApplyGunFixes(); }
         DriveVrHands();   // nach Kopf und Pistole, dieselbe Kamera (VrHands.cs)
+        DriveHandPoses(); // Parameter wirken im naechsten Animator-Takt (HandPoses.cs)
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
     }
 
@@ -488,6 +491,7 @@ public sealed partial class XRStart : MelonMod
         TickDevTools();
         TickUiProbe();
         TickVrUi();
+        TickSky();
         if (started && Time.unscaledTime >= nextInputLog)
         {
             nextInputLog = Time.unscaledTime + 1f;

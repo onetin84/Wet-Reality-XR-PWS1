@@ -46,6 +46,7 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<string> prefMirror = null!;
     private MelonPreferences_Entry<float> prefInteractionRange = null!;
     private MelonPreferences_Entry<bool> prefHands = null!;
+    private MelonPreferences_Entry<string> prefSkyFix = null!, prefSkyColor = null!;
     private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
 
     private void InitDevTools()
@@ -65,7 +66,10 @@ public sealed partial class XRStart
         handRRot = ParseVec(prefHandRRot.Value, new Vector3(-15f, 0f, -80f), "HandRightRot");
         handLPos = ParseVec(prefHandLPos.Value, new Vector3(-0.04f, 0f, -0.08f), "HandLeftPos");
         handLRot = ParseVec(prefHandLRot.Value, new Vector3(70f, 20f, 90f), "HandLeftRot");
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value}");
+        prefSkyFix = cat.CreateEntry("SkyFix", "solid", description: "Himmel im Headset: solid (feste Farbe, keine Schlieren), skybox (erzwingen), off (wie das Spiel)");
+        prefSkyColor = cat.CreateEntry("SkyColor", "0.55,0.72,0.92", description: "Himmelsfarbe fuer SkyFix=solid, r,g,b 0..1");
+        InitSky();
+        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 

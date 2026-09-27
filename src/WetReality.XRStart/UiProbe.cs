@@ -92,25 +92,7 @@ public sealed partial class XRStart
             mirrorReadbackAt = now + 1f;
         }
 
-        if (KeyPressed(VK_F2, ref f2WasDown, "F2"))
-        {
-            try
-            {
-                var d = Display();
-                if (d == null) LoggerInstance.Msg("SPIEGEL F2: kein XRDisplaySubsystem - erst XR starten");
-                else
-                {
-                    int i = Array.IndexOf(BlitModes, d.GetPreferredMirrorBlitMode());
-                    int k = (i + 1) % BlitModes.Length;
-                    d.SetPreferredMirrorBlitMode(BlitModes[k]);
-                    mirrorManual = true;
-                    mirrorReadbackWhat = $"F2 PreferredMirrorBlitMode={BlitNames[k]} ({BlitModes[k]})";
-                    LoggerInstance.Msg($"SPIEGEL F2: PreferredMirrorBlitMode -> {BlitNames[k]} ({BlitModes[k]}) | " + MirrorState());
-                }
-            }
-            catch (Exception e) { LoggerInstance.Warning("SPIEGEL F2: " + e.GetType().Name + ": " + e.Message); }
-            mirrorReadbackAt = now + 1f;
-        }
+        // F2 gehoert seit 1.13.0 dem Himmel (SkyFix.cs); die Blit-Messung ist erledigt.
     }
 
     // Abgleich statt Einmal-Schreiben (siehe Kopf).
