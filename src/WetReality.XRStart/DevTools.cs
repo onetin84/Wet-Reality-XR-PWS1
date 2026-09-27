@@ -44,6 +44,7 @@ public sealed partial class XRStart
 {
     private MelonPreferences_Entry<bool> prefAutoStart = null!, prefSkipContinue = null!, prefCheats = null!;
     private MelonPreferences_Entry<string> prefMirror = null!;
+    private MelonPreferences_Entry<float> prefInteractionRange = null!;
 
     private void InitDevTools()
     {
@@ -52,7 +53,8 @@ public sealed partial class XRStart
         prefSkipContinue = cat.CreateEntry("SkipLoadingContinue", true, description: "Ladebildschirm (Steuerungshilfe) automatisch mit Weiter bestaetigen");
         prefCheats = cat.CreateEntry("DevCheats", true, description: "Guthaben auffuellen und Jobs freischalten - schreibt in den Spielstand");
         prefMirror = cat.CreateEntry("DesktopMirror", "left", description: "Headsetbild auf dem Monitor: left, right, both oder off");
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value}");
+        prefInteractionRange = cat.CreateEntry("InteractionRange", 5f, description: "Meter ab der linken Hand, in denen Objekte zum Aufnehmen gefunden werden (PWS2: 5)");
+        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 

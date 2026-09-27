@@ -131,6 +131,7 @@
 // 1.9.7: nur Graphics in Canvases mit GraphicRaycaster (1.9.6: kein Ziel mehr).
 // 1.9.8: CanvasGroup/Maske ab dem Graphic selbst (SideMenuOverlay deckte alles zu).
 // 1.9.9: keine veralteten Grenzen - Hover sofort statt nach 2-3 s.
+// 1.10.0: Interaktionsreichweite aus der Hand 5 m wie PWS2 (InteractionRange).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -148,7 +149,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.9.9", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.10.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;

@@ -21,6 +21,12 @@
 // gueltiges Objekt haelt, von der Hand zum naechsten Punkt seines Colliders
 // (Collider.ClosestPoint - transform.position luegt bei animierten Objekten).
 //
+// REICHWEITE (1.10.0): der Selektor sucht bis m_maxDistance - im Spiel 1000 m
+// (Log seit 1.3.x), gedacht fuer den Kopfstrahl. Aus der Hand waren Leitern so
+// aus jeder Entfernung greifbar (Nutzer). PWS2 sucht AimInteractionRange = 5 m
+// ab der Hand (Pose.cs, Vorgabe) - hier als InteractionRange (cfg), gesetzt,
+// solange der Selektor umgelenkt ist, und beim Zuruecknehmen zurueck.
+//
 // Aktiv, solange der Kopf geschrieben wird (F7): toWorld braucht die Kamera,
 // die DriveHead eben gesetzt hat. Das Tragen (MovableItemHandler, eigenes
 // m_cameraTransform) bleibt vorerst am Kopf.
@@ -40,6 +46,7 @@ public sealed partial class XRStart
     private LineRenderer? pointerLine;
     private static InteractableItemRaycastSelector? selector;
     private Transform? selectorOriginal;
+    private float selectorOrigMax = -1f;
     private bool selectorRedirected;
     private float nextSelectorResolve;
     private bool lastHasTarget;
@@ -172,6 +179,7 @@ public sealed partial class XRStart
             {
                 selector = s;
                 selectorRedirected = false;
+                selectorOrigMax = -1f;
                 selectorOriginal = s.m_cameraTransform;
                 LoggerInstance.Msg($"ZEIGER: Selektor auf '{s.gameObject.name}', m_cameraTransform='{Name(selectorOriginal)}', " +
                     $"m_maxDistance={s.m_maxDistance:F2}, Maske {s.m_LayerMask.value}, gueltig {s.m_validItemLayerMask.value}");
@@ -186,6 +194,19 @@ public sealed partial class XRStart
             selector.m_cameraTransform = pointerGo!.transform;
             selectorRedirected = true;
         }
+        // Reichweite aus der Hand wie PWS2; nur bei Abweichung geschrieben.
+        try
+        {
+            float want = Math.Max(0.5f, prefInteractionRange.Value);
+            float have = selector.m_maxDistance;
+            if (Math.Abs(have - want) > 0.001f)
+            {
+                if (selectorOrigMax < 0f) selectorOrigMax = have;
+                selector.m_maxDistance = want;
+                LoggerInstance.Msg($"ZEIGER: Reichweite {have:F2} -> {want:F2} m (InteractionRange, PWS2 AimInteractionRange)");
+            }
+        }
+        catch { }
     }
 
     // Das aktuelle GUELTIGE Objekt des Selektors als Komponente. m_currentItem
@@ -279,11 +300,13 @@ public sealed partial class XRStart
             if (selectorRedirected && selector != null)
             {
                 selector.m_cameraTransform = selectorOriginal;
+                if (selectorOrigMax >= 0f) selector.m_maxDistance = selectorOrigMax;
                 LoggerInstance.Msg($"ZEIGER: Selektor zurueck auf '{Name(selectorOriginal)}'");
             }
         }
         catch { }
         selectorRedirected = false;
+        selectorOrigMax = -1f;
         selector = null;
     }
 
