@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
-    <FileVersion>1.0.0</FileVersion>
+    <Version>1.3.2</Version>
+    <AssemblyVersion>1.3.2</AssemblyVersion>
+    <FileVersion>1.3.2</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
@@ -39,6 +39,8 @@
     <!-- 0.5.0: Zaehler auf PlayerCameraController (Handbuch 2.5). -->
     <Reference Include="Il2CppPWS" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2CppPWS.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(GamePath)\MelonLoader\net6\0Harmony.dll" Private="false" />
+    <!-- 1.3.0: Collider.ClosestPoint fuer den Endpunkt des Zeigestrahls. -->
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.PhysicsModule.dll" Private="false" />
     <!-- 0.7.0: EquipmentManager erbt von MLAPI.NetworkBehaviour. -->
     <Reference Include="Unity.Multiplayer.MLAPI.Runtime" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.Multiplayer.MLAPI.Runtime.dll" Private="false" />
     <Reference Include="Il2CppInterop.Common" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Common.dll" Private="false" />
