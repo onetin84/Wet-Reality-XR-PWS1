@@ -144,6 +144,9 @@
 // 1.16.0: AutoStart ohne feste Pausen, XR schon beim Laden des Levels.
 // 1.17.0: Ziel-Teleport auf dem rechten Stick nach vorn, Komfort-Teleport links (Teleport.cs).
 // 1.17.1: Zielmarker und Zeigerfarben wie PWS2 (PointerStyle.cs), kein Teleport beim Spruehen.
+// 1.18.0: TurnSpeed, SprayHaptics, HapticIntensity, UiScale, UiDistance als cfg (Konfigurator).
+// 1.19.0: Waehlscheibe - in Weltkoordinaten gedrehte Segmente auf lokal umgerechnet.
+// 1.19.1: Waehlscheibe - Auswahl-Ausschlag in Ringgroesse (schraege Segmente).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -161,7 +164,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.17.1", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.19.1", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;

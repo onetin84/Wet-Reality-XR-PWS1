@@ -40,7 +40,9 @@ namespace WetReality.XRStart;
 
 public sealed partial class XRStart
 {
-    private const float SprayIntensity = 1f;
+    // cfg HapticIntensity (PWS2-Name), Vorgabe 1. SprayHaptics = false nimmt nur den
+    // Dauerpuls des Strahls - Ereignisimpulse (Menue, Duese, Scheibe) bleiben.
+    private float SprayIntensity => Math.Max(0f, prefHapticIntensity?.Value ?? 1f);
     private const float Jet0 = 0.42f, Jet15 = 0.34f, Jet25 = 0.26f, Jet40 = 0.18f, JetSoap = 0.27f, JetDefault = 0.30f;
     private const float TurboFactor = 1.15f, TurboHz = 15f, TurboDepth = 0.6f;
     private const float ContactFactor = 0.45f, ContactSmooth = 0.15f, ContactRange = 8f, ContactSkip = 0.1f;
@@ -177,7 +179,7 @@ public sealed partial class XRStart
 
     private float SteadySprayAmplitude()
     {
-        if (!sprayWashing) return 0f;
+        if (!sprayWashing || !(prefSprayHaptics?.Value ?? true)) return 0f;
         float basis = sprayNozzle switch
         {
             (int)NozzleType.Red_0 => Jet0,

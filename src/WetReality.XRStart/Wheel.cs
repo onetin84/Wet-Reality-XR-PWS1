@@ -78,6 +78,27 @@
 //   UpdateInput (Update), OnLateUpdate, onBeforeRender; vor dem Rendern wird
 //   gemessen, ob jemand dazwischen ueberschrieben hat (WAEHLSCHEIBE Lage).
 //
+// 1.19.0, nach Nutzerbild wheel-world-coordinates-issue.png: die Hintergrund-
+//   scheibe steht richtig zur Kamera, der RING mit den Segmenten und dem
+//   Auswahlkeil steht weltfest (schraeg, gespiegelt, kantig flach). Der
+//   Knotendump ging nur 3 Ebenen tief - die Segmente unter Slots fehlten.
+//   Hypothese: das Spiel setzt ihre WELTdrehung (rotation = Euler(0,0,a)) statt
+//   der lokalen - am PC mit ungedrehter UI dasselbe, in VR an den Weltachsen.
+//   Korrektur: unter der offenen Scheibe jeden Knoten, dessen Weltdrehung eine
+//   REINE Z-Drehung ist, waehrend der Elternknoten es nicht ist, auf die lokale
+//   Drehung Euler(0,0,a) setzen - in Update (UpdateInput-Postfix) und
+//   LateUpdate, vor dem Canvas-Bau, und immer wieder, wenn das Spiel neu
+//   schreibt. Jeder korrigierte Knoten einmal im Log (WAEHLSCHEIBE Welt->lokal).
+//
+// 1.19.1, nach 1.19.0 Lauf (Nutzer): Ring "deutlich besser" (Rest-Verzerrung
+//   beim Seitenblick: spaeter). Aber schraege Segmente (Duese 1-2 Uhr, 4-5 Uhr)
+//   waehlen nichts, nur waagerecht/senkrecht. Ursache: GetSlotOffsetMagnitude
+//   liest 0 (gemessen 1.15.1), Select bekam Max(1, 0) x 1,2 = 1,2 EINHEITEN -
+//   der Ring ist Hunderte gross. Prueft das Spiel die Achsen gegen eine
+//   Totzone dieser Groesse, reichen orthogonal 1,2, schraeg je Achse 0,85 nicht.
+//   Jetzt: Ausschlag = Ringradius in CANVAS-Einheiten (Meter / Skalierung der
+//   Scheibe), mindestens 300.
+//
 // Ein Prefix auf RadialMenu.UpdateInput setzt, solange die MOD die Scheibe
 // offen hat, m_inputMode = ConsoleController und UiMovementRaw = rechter Stick -
 // unmittelbar vor dem Lesen, ohne Rennen mit PlayerInput.Update.
@@ -116,6 +137,7 @@ public sealed partial class XRStart
     private bool wheelMeasured;
     private const float WheelPointerRadius = 0.12f, WheelCommitSeconds = 0.15f, WheelRingShare = 0.8f;
     private static float wheelSlotMag;          // Segmentabstand der offenen Kategorie (Postfix)
+    private static float wheelRingUnits;        // Ringradius in Canvas-Einheiten (aus der Messung)
     private float wheelChildDumpAt = -1f;
     private float wheelRingMeters;           // Radius der Slot-Symbole, gemessen je Scheibe
     private bool wheelShadersLogged;
@@ -124,6 +146,8 @@ public sealed partial class XRStart
     private static Quaternion wheelPlaceRot;
     private static bool wheelPlaceValid;
     private static int wheelOverwritten, wheelPlaceChecks;
+    private static readonly HashSet<string> wheelFixLogged = new();
+    private static int wheelFixes;
     private float nextWheelPlaceLog;
 
     private void PatchWheel()
@@ -179,7 +203,9 @@ public sealed partial class XRStart
 
     private static void SelectIn<T>(Il2CppPWS.UI.RadialMenuCategoryBase<T> cat, Vector2 dir) where T : Il2CppPWS.BaseEquipmentData
     {
-        float mag = Math.Max(1f, cat.GetSlotOffsetMagnitude());
+        // Ringgroesse statt des Spielwerts (der liest 0): jede Richtung weit ueber
+        // jeder Totzone, auch schraeg.
+        float mag = Math.Max(Math.Max(cat.GetSlotOffsetMagnitude(), wheelRingUnits), 300f);
         cat.Select(new Vector3(dir.x, dir.y, 0f) * mag * 1.2f);
         wheelSelects++;
     }
@@ -296,6 +322,8 @@ public sealed partial class XRStart
             float ringNow = MeasureRing(!wheelFrameSetRing);
             if (!wheelFrameSetRing) { wheelRingMeters = 0f; wheelFrameSetRing = true; }
             if (ringNow > wheelRingMeters) wheelRingMeters = ringNow;
+            float unitNow = radialInst == null ? 0f : Math.Abs(radialInst.transform.lossyScale.x);
+            wheelRingUnits = unitNow > 1e-7f ? wheelRingMeters / unitNow : 0f;
             Vector2 v = wheelRingMeters > 0.01f
                 ? vm / (wheelRingMeters * WheelRingShare)
                 : vm / WheelPointerRadius;
@@ -313,7 +341,7 @@ public sealed partial class XRStart
             if (over && wheelChain && now - wheelOverSince >= WheelCommitSeconds && wheelPi != null)
             {
                 int i = Array.IndexOf(WheelTypes, wheelType);
-                LoggerInstance.Msg($"WAEHLSCHEIBE: {wheelType} gewaehlt per Zeiger (Richtung {v.normalized.ToString("F2")}), Ring {wheelRingMeters:F3} m, Select {wheelSelects}x");
+                LoggerInstance.Msg($"WAEHLSCHEIBE: {wheelType} gewaehlt per Zeiger (Richtung {v.normalized.ToString("F2")}, Winkel {Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg:F0}), Ring {wheelRingMeters:F3} m = {wheelRingUnits:F0} Einheiten, Select {wheelSelects}x");
                 if (i >= WheelTypes.Length - 1) CloseWheel(wheelPi, "Kette fertig");
                 else
                 {
@@ -367,8 +395,9 @@ public sealed partial class XRStart
         if (now >= nextWheelPlaceLog)
         {
             nextWheelPlaceLog = now + 1f;
-            LoggerInstance.Msg($"WAEHLSCHEIBE Lage: vor dem Rendern {wheelOverwritten} von {wheelPlaceChecks} Frames fremd ueberschrieben");
+            LoggerInstance.Msg($"WAEHLSCHEIBE Lage: vor dem Rendern {wheelOverwritten} von {wheelPlaceChecks} Frames fremd ueberschrieben, Welt->lokal {wheelFixes} Korrekturen");
             wheelOverwritten = wheelPlaceChecks = 0;
+            wheelFixes = 0;
         }
     }
 
@@ -440,7 +469,7 @@ public sealed partial class XRStart
             var sb = new System.Text.StringBuilder($"WAEHLSCHEIBE Knoten ({when}), Segmentabstand {wheelSlotMag:F0}, offsetFeedback '{(fb == null ? "-" : fb.name)}':");
             void Walk(Transform t, int depth)
             {
-                if (depth > 3) return;
+                if (depth > 5) return;
                 for (int i = 0; i < t.childCount; i++)
                 {
                     var c = t.GetChild(i);
@@ -458,8 +487,46 @@ public sealed partial class XRStart
     // Aus dem UpdateInput-Postfix und OnLateUpdate: dieselbe Lage vor dem Canvas-Bau.
     internal static void ApplyWheelPlacement(Transform? t)
     {
-        if (!wheelOpen || !wheelPlaceValid || t == null) return;
-        try { t.SetPositionAndRotation(wheelPlaceAt, wheelPlaceRot); } catch { }
+        if (!wheelOpen || t == null) return;
+        if (wheelPlaceValid) { try { t.SetPositionAndRotation(wheelPlaceAt, wheelPlaceRot); } catch { } }
+        FixWorldRotations(t);
+    }
+
+    private static bool PureZ(Quaternion q)
+    {
+        var e = q.eulerAngles;
+        float x = Mathf.DeltaAngle(0f, e.x), y = Mathf.DeltaAngle(0f, e.y);
+        return Math.Abs(x) < 0.5f && Math.Abs(y) < 0.5f;
+    }
+
+    // Knoten, die das Spiel in WELTkoordinaten gedreht hat, in lokale umrechnen.
+    private static void FixWorldRotations(Transform root)
+    {
+        try
+        {
+            void Walk(Transform t, int depth)
+            {
+                if (depth > 12) return;
+                for (int i = 0; i < t.childCount; i++)
+                {
+                    var c = t.GetChild(i);
+                    if (c == null || !c.gameObject.activeInHierarchy) continue;
+                    var parentRot = t.rotation;
+                    var rot = c.rotation;
+                    if (!PureZ(parentRot) && PureZ(rot))
+                    {
+                        float a = rot.eulerAngles.z;
+                        c.localRotation = Quaternion.Euler(0f, 0f, a);
+                        wheelFixes++;
+                        string key = c.name + "/" + t.name;
+                        if (wheelFixLogged.Add(key)) self?.LoggerInstance.Msg($"WAEHLSCHEIBE Welt->lokal: '{c.name}' unter '{t.name}' z {a:F0} (Tiefe {depth})");
+                    }
+                    Walk(c, depth + 1);
+                }
+            }
+            Walk(root, 1);
+        }
+        catch { }
     }
 
     private void RestoreWheelPose()

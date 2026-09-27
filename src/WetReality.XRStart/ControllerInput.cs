@@ -41,7 +41,8 @@ public sealed partial class XRStart
     private const float MoveDeadZone = 0.15f;
     private const float SprintThreshold = 0.9f;
     private const float TurnDeadZone = 0.2f;
-    private const float TurnSpeed = 90f;
+    // cfg TurnSpeed (Grad/s, PWS2-Name fuer den Konfigurator), Vorgabe 90.
+    private float TurnSpeed => prefTurnSpeed?.Value ?? 90f;
 
     // Vom letzten Frame: fuer das einmalige Zuruecksetzen beim Loslassen.
     private static bool weFire, weMove, weSprint;

@@ -36,7 +36,9 @@ public sealed partial class XRStart
     private bool f10WasDown;
     private bool vrUiWanted = true;
 
-    private const float UiDistance = 2f, UiScale = 0.3627f;
+    // cfg UiDistance (m) und UiScale (Kindknoten), PWS2-Namen; Vorgaben 2 und 0,3627.
+    private float UiDistance => Math.Max(0.5f, prefUiDistance?.Value ?? 2f);
+    private float UiScale => Math.Max(0.05f, prefUiScale?.Value ?? 0.3627f);
     private static readonly string[] ZTestProperties = { "unity_GUIZTestMode", "_ZTestMode", "_ZTest" };
     private const int CompareAlways = 8, CompareLessEqual = 4;
 
