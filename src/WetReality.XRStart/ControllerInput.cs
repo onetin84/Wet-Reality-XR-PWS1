@@ -84,7 +84,8 @@ public sealed partial class XRStart
 
             // Spruehen - Trigger oder der Dauerspruehen-Schalter auf dem Griff
             var trig = Axis(r, "trigger");
-            bool fire = (trig != null && trig.ReadValue() > FireThreshold) || fireLatched;
+            // Im Menue gehoert der Trigger dem Klick - und bis zum Loslassen danach (MenuPointer.cs).
+            bool fire = !menuOwnsTrigger && ((trig != null && trig.ReadValue() > FireThreshold) || fireLatched);
             if (fire) { __instance.Fire = true; weFire = true; fireFrames++; }
             else if (weFire) { __instance.Fire = false; weFire = false; }
 
@@ -150,6 +151,10 @@ public sealed partial class XRStart
     //   links   Trigger      Duese drehen (RotateNozzle)
     //           X            Aufnehmen/Ablegen (PickupItemPressed PickUp)
     //           L3           Verlaengerung (SwitchExtension +1)
+    //           Griff        Schmutz hervorheben (1.6.5), nur ohne Tragen - beim
+    //                        Tragen ist er der Dreh-Modifikator (PWS2 dirtButton).
+    //                        PlayerInput.TriggerDirtHighlight (0x9EE1A0) ruft nur
+    //                        WashManager.instance.TriggerDirtHighlight(), ohne Sperre.
     //           Menue        Pause (m_pauseAction) - ohne Sperre, wie das Spiel
     // Ereigniszeilen immer: welcher Knopf, was ausgeloest oder warum gesperrt.
     private const float CrouchHoldSeconds = 0.5f;
@@ -267,7 +272,7 @@ public sealed partial class XRStart
             var rs = Stick(r);
             float y = rs == null ? 0f : rs.ReadValue().y;
             if (Math.Abs(y) < StickRearm) stickYArmed = true;
-            else if (stickYArmed && y < -StickFlick)
+            else if (stickYArmed && y < -StickFlick && !menuActive)
             {
                 // Nur runter: hoch gehoert dem Teleport (PWS2 §147), der Zyklus
                 // erreicht rueckwaerts weiter jede Duese.
@@ -308,6 +313,9 @@ public sealed partial class XRStart
                 }
             }
 
+            if (Edge(l, "L", "gripPressed") && !pi.CarryItem)
+                HighlightDirt();
+
             if (Edge(l, "L", "thumbstickClicked") && Free(pi, "L3 Verlaengerung"))
             {
                 pi.SwitchExtension?.Invoke(1);
@@ -324,6 +332,20 @@ public sealed partial class XRStart
         {
             btnEvents.Add("Knoepfe: Ausnahme " + e.GetType().Name + ": " + e.Message);
         }
+    }
+
+    private static Il2CppPWS.WashManager? washManager;
+
+    private static void HighlightDirt()
+    {
+        try
+        {
+            if (washManager == null) washManager = UnityEngine.Object.FindObjectOfType<Il2CppPWS.WashManager>();
+            if (washManager == null) { btnEvents.Add("Griff links: kein WashManager"); return; }
+            washManager.TriggerDirtHighlight();
+            btnEvents.Add("Griff links: Schmutz hervorheben (WashManager.TriggerDirtHighlight)");
+        }
+        catch (Exception e) { btnEvents.Add("Griff links: Ausnahme " + e.GetType().Name + ": " + e.Message); washManager = null; }
     }
 
     // Aus OnUpdate: Ereigniszeilen der Knoepfe ausgeben (die Patches sind statisch).
@@ -368,7 +390,7 @@ public sealed partial class XRStart
     }
 
     private static int rotateFrames;
-    private const float RotateFactor = 2f;
+    private const float RotateFactor = 2.4f;   // 1.5.0: 2 - "vielleicht noch 20 % schneller"
     internal static bool SprayingNow => weFire || fireLatched;
     private static bool lastCarry;
 
@@ -429,7 +451,7 @@ public sealed partial class XRStart
     {
         inputStartedStatic = started;
         ResolveCharacter();
-        if (!inputOn || !started || !trackBody) return;
+        if (!inputOn || !started || !trackBody || menuActive) return;   // im Menue scrollt der Stick (MenuPointer.cs)
         try
         {
             var rs = Stick(XRController.rightHand);

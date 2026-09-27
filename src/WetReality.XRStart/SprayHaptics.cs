@@ -16,6 +16,10 @@
 //   Kontakt    eigener Raycast entlang der Waschrichtung, die die Mod schreibt
 //              (0,1 m ab Muendung, 8 m, Trigger ignoriert); ohne Treffer 0,45,
 //              0,15 s geglaettet                                   (PWS2)
+//              1.6.0: Maske = WashEquipment.m_rayMask (womit das Spiel
+//              waescht). Mit PWS2s -5 traf der Strahl in 1.5.0 fast immer,
+//              auch "in die Luft" (Lauf 2: 50x Treffer, 3x nicht) - der
+//              Bericht nennt, was -5 trifft.
 //   Atmen      5 %, 0,7 Hz - langsam, nicht als Pulsieren spuerbar (PWS2)
 //
 // DAUERPULS DURCH NACHSENDEN: ein neuer Impuls ersetzt den laufenden; alle
@@ -40,7 +44,8 @@ public sealed partial class XRStart
     private const float Jet0 = 0.42f, Jet15 = 0.34f, Jet25 = 0.26f, Jet40 = 0.18f, JetSoap = 0.27f, JetDefault = 0.30f;
     private const float TurboFactor = 1.15f, TurboHz = 15f, TurboDepth = 0.6f;
     private const float ContactFactor = 0.45f, ContactSmooth = 0.15f, ContactRange = 8f, ContactSkip = 0.1f;
-    private const int ContactMask = -5;   // Unitys DefaultRaycastLayers
+    private const int DefaultMask = -5;   // Unitys DefaultRaycastLayers, nur noch zum Vergleich im Bericht
+    private int sprayMask = DefaultMask;
     private const float Refresh = 0.06f, Breathe = 0.05f;
 
     private static readonly List<(float Until, float Amplitude, float Seconds)> spraySegments = new();
@@ -109,7 +114,7 @@ public sealed partial class XRStart
             }
 
             // Kontakt, zeitlich geglaettet statt geschaltet.
-            bool hit = sprayWashing && ProbeSprayContact();
+            bool hit = sprayWashing && ProbeSprayContact(sprayMask);
             float step = Mathf.Clamp01(Time.unscaledDeltaTime / ContactSmooth);
             sprayContact += ((hit ? 1f : 0f) - sprayContact) * step;
 
@@ -159,7 +164,8 @@ public sealed partial class XRStart
             {
                 sprayNextReport = now + 1f;
                 LoggerInstance.Msg($"SPRUEH-HAPTIK: Duese {NozzleName(sprayNozzle)} Reiniger {(PowerWasherClass)sprayClass} | " +
-                    $"spruehen {sprayWashing} Kontakt {sprayContact:F2} (Treffer {hit}) | Amplitude {sprayLastAmp:F3} Intervall {interval * 1000f:F0} ms | Segmente {spraySegments.Count}");
+                    $"spruehen {sprayWashing} Kontakt {sprayContact:F2} (Treffer {hit}) | Amplitude {sprayLastAmp:F3} Intervall {interval * 1000f:F0} ms | Segmente {spraySegments.Count} | " +
+                    $"Maske Spiel 0x{sprayMask:X8}: {DescribeContact(sprayMask)} | Maske -5: {DescribeContact(DefaultMask)}");
             }
         }
         catch (Exception e)
@@ -190,15 +196,49 @@ public sealed partial class XRStart
     // Trifft der Strahl etwas? Entlang DERSELBEN Richtung, die die Mod dem Spiel
     // gibt (RaycastUpdatePostfix). Die Ueberladung ohne RaycastHit: zwei Vector3
     // hinein, bool heraus - die Struct-Sperre gilt fuer RaycastHit, nicht hier.
-    private static bool ProbeSprayContact()
+    private static bool ProbeSprayContact(int mask, float range = ContactRange)
     {
         if (!pubNozzleReady || pubNozzleDir.sqrMagnitude < 0.0001f) return false;
         try
         {
             var dir = pubNozzleDir.normalized;
-            return Physics.Raycast(pubNozzleOrigin + dir * ContactSkip, dir, ContactRange, ContactMask, QueryTriggerInteraction.Ignore);
+            return Physics.Raycast(pubNozzleOrigin + dir * ContactSkip, dir, range, mask, QueryTriggerInteraction.Ignore);
         }
         catch { return false; }
+    }
+
+    // Nur fuer den Bericht: Abstand und Collider des ersten Treffers OHNE
+    // RaycastHit (>= 24 Byte, ueberquert die Interop-Grenze nicht - PWS2
+    // Handbuch, harter Prozesstod). Abstand per Bisektion ueber die
+    // Bool-Ueberladung, Collider per OverlapSphere am Trefferpunkt.
+    private static string DescribeContact(int mask)
+    {
+        if (!ProbeSprayContact(mask)) return "kein Treffer";
+        try
+        {
+            float lo = 0f, hi = ContactRange;
+            for (int i = 0; i < 10; i++)
+            {
+                float mid = (lo + hi) * 0.5f;
+                if (ProbeSprayContact(mask, Math.Max(mid, 0.001f))) hi = mid; else lo = mid;
+            }
+            var dir = pubNozzleDir.normalized;
+            var p = pubNozzleOrigin + dir * (ContactSkip + hi);
+            var cols = Physics.OverlapSphere(p, 0.05f, mask, QueryTriggerInteraction.Ignore);
+            var sb = new System.Text.StringBuilder($"{hi:F2} m");
+            int n = cols == null ? 0 : cols.Length;
+            for (int i = 0; i < Math.Min(n, 3); i++)
+            {
+                var c = cols![i];
+                if (c == null) continue;
+                var go = c.gameObject;
+                var root = c.transform.root;
+                sb.Append($" '{go.name}' L{go.layer}({LayerMask.LayerToName(go.layer)}) {c.GetIl2CppType().Name} unter '{(root == null ? "-" : root.name)}'");
+            }
+            if (n > 3) sb.Append($" +{n - 3}");
+            return sb.ToString();
+        }
+        catch (Exception e) { return "Treffer, Beschreibung " + e.GetType().Name; }
     }
 
     // Duese und Reiniger, verglichen am Enumwert. Ereignisimpulse nur beim
@@ -208,6 +248,7 @@ public sealed partial class XRStart
         int nozzle = int.MinValue, cls = -1;
         try { var nd = we.m_nozzleData; if (nd != null) nozzle = (int)nd.NozzleType; } catch { }
         try { var wd = we.m_powerWasherData; if (wd != null) cls = (int)wd.Class; } catch { }
+        try { int m = we.m_rayMask.value; if (m != sprayMask && m != 0) { sprayMask = m; LoggerInstance.Msg($"SPRUEH-HAPTIK: Kontaktmaske = m_rayMask 0x{m:X8}"); } } catch { }
         if (nozzle == sprayNozzle && cls == sprayClass) return;
 
         bool first = !spraySawConfig;

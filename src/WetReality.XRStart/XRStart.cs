@@ -110,6 +110,27 @@
 //        linkem Griff + linkem Stick beim Tragen.
 // 1.5.0: Strahl-Haptik (PWS2 SprayHaptics), Zeigestrahl beim Spruehen aus,
 //        Objekt drehen doppelt so schnell.
+// 1.6.0: Testumgebung (DevTools.cs): Autostart F8/F7/F5, Ladebildschirm-Weiter
+//        automatisch, Cheats Guthaben + Jobs frei; Kontaktstrahl der Haptik mit
+//        der Waschmaske des Spiels; Objekt drehen x2,4.
+// 1.6.1: Cheat Sterne (Washer im Shop freischalten).
+// 1.6.2: Sterne-Jingle alle 2 s behoben (DLC-Kampagnen nehmen keine Sterne an).
+// 1.6.3: Sterne waehrend eines Jobs unberuehrt (sporadischer Ping).
+// 1.6.4: Sterne nie mehr veraendert; Shop-Sperre StarsRemaining -> 0.
+// 1.6.5: linker Griff ohne Tragen = Schmutz hervorheben.
+// 1.7.0: Messung Menue-Canvases und Spiegelbild, F1/F2 (UiProbe.cs).
+// 1.8.0: Spiel-UI im Headset - UIRoot als ScreenSpaceCamera, F10 (VrUi.cs);
+//        Spiegel-Schalter DesktopMirror (UiProbe.cs).
+// 1.9.0: Menue mit dem Zeigestrahl der rechten Hand, Trigger klickt (MenuPointer.cs).
+// 1.9.1: Klick/Hover wie die Maus, Hover-Toleranz, Regler ziehen, Scrollen mit dem Stick.
+// 1.9.2: Klick als Mausfolge ueber ExecuteEvents, kein Hover-Puls, Strahl geglaettet, Scrollweg.
+// 1.9.3: Scrollen nur sichtbarer Seiten, Hover an die Elternkette, Werkzeug im Menue aus.
+// 1.9.4: Treffer in der Ebene jedes Elements (Parallaxe), Scroll-Rueckfall.
+// 1.9.5: Ziel = oberstes Graphic wie der GraphicRaycaster, Klick-Nachruecken, Scrollbalken.
+// 1.9.6: Treffertest geometrisch statt ueber den Bildschirmpunkt (Versatz).
+// 1.9.7: nur Graphics in Canvases mit GraphicRaycaster (1.9.6: kein Ziel mehr).
+// 1.9.8: CanvasGroup/Maske ab dem Graphic selbst (SideMenuOverlay deckte alles zu).
+// 1.9.9: keine veralteten Grenzen - Hover sofort statt nach 2-3 s.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -127,7 +148,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.5.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.9.9", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -196,7 +217,7 @@ public sealed partial class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F3 = Controller-Steuerung an/aus, F9 = 20 s Kopfmessung");
+        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F3 = Controller-Steuerung an/aus, F9 = 20 s Kopfmessung, F1 = Spiegel gameViewRenderMode, F2 = Spiegel PreferredMirrorBlitMode, F10 = UI im Headset an/aus");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
@@ -206,9 +227,10 @@ public sealed partial class XRStart : MelonMod
         PatchControllerInput();
         self = this;
         HookBeforeRender();   // seit 0.6.2 auch Schreibpunkt, nicht nur F9-Messung
+        InitDevTools();       // Autostart, Ladebildschirm, Cheats (DevTools.cs)
         // Das 0x0001-Bit kann von einem frueheren Druck stehen (auch in einem
         // anderen Programm) - einmal ablesen, damit F8 nicht von selbst startet.
-        foreach (int vk in new[] { VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9 }) GetAsyncKeyState(vk);
+        foreach (int vk in new[] { VK_F1, VK_F2, VK_F10, VK_F11, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9 }) GetAsyncKeyState(vk);
     }
 
     // Nur Zaehler und Lesungen, kein Eingriff: Prefix gibt nichts zurueck,
@@ -347,6 +369,7 @@ public sealed partial class XRStart : MelonMod
         if (writeHead) MeasurePoseGap();
         if (writeHead && writeAtRender) DriveHead();
         if (writeHead) DriveOffHandPointer();   // X zielt mit der linken Hand (Pointer.cs)
+        DriveMenuPointer();                     // Menue: Strahl rechts, Trigger klickt (MenuPointer.cs)
         // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
         if (writeGun) { DriveGun(); ApplyGunFixes(); }
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
@@ -459,6 +482,9 @@ public sealed partial class XRStart : MelonMod
         UpdateControllerTurn();
         FlushButtonEvents();
         TickPickupDiag();
+        TickDevTools();
+        TickUiProbe();
+        TickVrUi();
         if (started && Time.unscaledTime >= nextInputLog)
         {
             nextInputLog = Time.unscaledTime + 1f;
@@ -486,15 +512,7 @@ public sealed partial class XRStart : MelonMod
         if (KeyPressed(VK_F7, ref f7WasDown, "F7"))
         {
             if (writeHead) StopWriting("F7");
-            else if (!started) LoggerInstance.Msg("F7: XR laeuft nicht - erst F8");
-            else
-            {
-                writeHead = true;
-                haveBase = false;           // neu zentrieren beim ersten Frame
-                headWrites = 0;
-                nextHeadLog = 0f;
-                LoggerInstance.Msg("F7: Kopf schreiben AN (Maus-Pitch verworfen, Maus-Yaw = Koerper)");
-            }
+            else StartHead("F7");
         }
 
         if (KeyPressed(VK_F5, ref f5WasDown, "F5"))
@@ -676,6 +694,17 @@ public sealed partial class XRStart : MelonMod
         headCtl = null;
         headTurn = null;
         headCam = null;
+    }
+
+    private void StartHead(string why)
+    {
+        if (writeHead) return;
+        if (!started) { LoggerInstance.Msg($"{why}: XR laeuft nicht - erst F8"); return; }
+        writeHead = true;
+        haveBase = false;           // neu zentrieren beim ersten Frame
+        headWrites = 0;
+        nextHeadLog = 0f;
+        LoggerInstance.Msg($"{why}: Kopf schreiben AN (Maus-Pitch verworfen, Maus-Yaw = Koerper)");
     }
 
     // Rotation gibt das Spiel im naechsten UpdateRotation selbst zurueck, die

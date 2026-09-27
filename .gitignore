@@ -77,3 +77,4 @@ tools/dump-out/
 tools/*.out.json
 tools/*.out.txt
 tools/*.log
+savegame-backup/
