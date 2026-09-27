@@ -280,6 +280,9 @@ public sealed partial class XRStart
             LoggerInstance.Msg($"ZEIGER: {usable} brauchbare Collider am Ziel, Strahllaenge {depth:F2} m");
         }
         if (pointerLine == null) return;
+        var bc = BeamTint();   // eine Farbe fuer alle Zeiger (PointerStyle.cs)
+        pointerLine.startColor = bc;
+        pointerLine.endColor = bc;
         pointerLine.SetPosition(0, origin);
         pointerLine.SetPosition(1, end);
         pointerLine.enabled = true;

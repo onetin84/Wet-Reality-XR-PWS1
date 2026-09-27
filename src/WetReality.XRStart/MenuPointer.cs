@@ -922,7 +922,9 @@ public sealed partial class XRStart
             }
         }
         if (menuLine == null) return;
-        var c = hasTarget ? new Color(1f, 0.35f, 0.75f, 0.9f) : new Color(0.3f, 0.8f, 1f, 0.6f);
+        // Eine Farbe fuer alle Zeiger (PointerColor); mit Ziel etwas deckender.
+        var c = BeamTint();
+        if (hasTarget) c.a = Math.Min(1f, c.a + 0.15f);
         menuLine.startColor = c;
         menuLine.endColor = c;
         menuLine.SetPosition(0, from);

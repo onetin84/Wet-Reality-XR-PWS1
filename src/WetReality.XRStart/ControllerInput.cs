@@ -92,6 +92,7 @@ public sealed partial class XRStart
             // Gehen und Sprint
             var ls = Stick(l);
             var mv = ls == null ? Vector2.zero : ls.ReadValue();
+            if (tpComfortActive) mv = Vector2.zero;   // Komfort: der linke Stick teleportiert statt zu gehen (Teleport.cs)
 
             // Tragen + linker Griff: der linke Stick dreht das Objekt, das Gehen
             // steht still (PWS2 DriveItemRotation). PWS1-Weg wie
@@ -273,7 +274,7 @@ public sealed partial class XRStart
             var rs = Stick(r);
             float y = rs == null ? 0f : rs.ReadValue().y;
             if (Math.Abs(y) < StickRearm) stickYArmed = true;
-            else if (stickYArmed && y < -StickFlick && !menuActive && !wheelOpen)
+            else if (stickYArmed && y < -StickFlick && !menuActive && !wheelOpen && !tpAiming)
             {
                 // Nur runter: hoch gehoert dem Teleport (PWS2 §147), der Zyklus
                 // erreicht rueckwaerts weiter jede Duese.
@@ -457,7 +458,11 @@ public sealed partial class XRStart
         {
             var rs = Stick(XRController.rightHand);
             if (rs == null) return;
-            float x = rs.ReadValue().x;
+            var rv = rs.ReadValue();
+            float x = rv.x;
+            // Der Stick macht eins (PWS2 TeleportTurnLock): nach vorn gedrueckt oder
+            // beim Zielen dreht er nicht - auch nicht in der Einschwingzeit.
+            if ((tpAiming && !tpFromLeftStatic) || (rv.y > Math.Abs(rv.x) && rv.y > 0.2f)) return;
             if (Math.Abs(x) <= TurnDeadZone) return;
             // Aus der Totzone heraus weich einsetzen, nicht mit einem Sprung.
             float s = Math.Sign(x) * (Math.Abs(x) - TurnDeadZone) / (1f - TurnDeadZone);

@@ -48,6 +48,8 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<float> prefInteractionRange = null!;
     private MelonPreferences_Entry<bool> prefHands = null!;
     private MelonPreferences_Entry<string> prefSkyFix = null!, prefSkyColor = null!;
+    private MelonPreferences_Entry<bool> prefComfortTeleport = null!;
+    private MelonPreferences_Entry<float> prefTeleportJumpSpeed = null!;
     private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
 
     private void InitDevTools()
@@ -70,7 +72,11 @@ public sealed partial class XRStart
         prefSkyFix = cat.CreateEntry("SkyFix", "solid", description: "Himmel im Headset: solid (feste Farbe, keine Schlieren), skybox (erzwingen), off (wie das Spiel)");
         prefSkyColor = cat.CreateEntry("SkyColor", "0.55,0.72,0.92", description: "Himmelsfarbe fuer SkyFix=solid, r,g,b 0..1");
         InitSky();
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value}");
+        InitPointerStyle(cat);   // PointerColor & Teleportziel (PointerStyle.cs)
+        // Namen wie PWS2 - fuer den spaeteren Konfigurator.
+        prefComfortTeleport = cat.CreateEntry("ComfortTeleport", false, description: "Komfort: linker Stick nach vorn teleportiert aus der linken Hand und ersetzt das Gehen. Der Ziel-Teleport auf der Pistolenhand wirkt immer.");
+        prefTeleportJumpSpeed = cat.CreateEntry("TeleportJumpSpeed", 7f, description: "m/s. Waagerechtes Tempo der Sprungparabel, die die Teleportweite begrenzt (PWS2 gemessen: 7,0 mit Sprint)");
+        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 

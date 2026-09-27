@@ -142,6 +142,8 @@
 // 1.15.3: Scheibe weltfest (Position + Drehung vom Oeffnen), Ring je Frame als Maximum.
 // 1.15.4: Lage der Scheibe auch in Update/LateUpdate, Messung fremder Ueberschreibung.
 // 1.16.0: AutoStart ohne feste Pausen, XR schon beim Laden des Levels.
+// 1.17.0: Ziel-Teleport auf dem rechten Stick nach vorn, Komfort-Teleport links (Teleport.cs).
+// 1.17.1: Zielmarker und Zeigerfarben wie PWS2 (PointerStyle.cs), kein Teleport beim Spruehen.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -159,7 +161,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.16.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.17.1", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -387,6 +389,7 @@ public sealed partial class XRStart : MelonMod
         if (writeGun) { DriveGun(); ApplyGunFixes(); }
         DriveVrHands();   // nach Kopf und Pistole, dieselbe Kamera (VrHands.cs)
         DriveHandPoses(); // Parameter wirken im naechsten Animator-Takt (HandPoses.cs)
+        DriveTeleport();  // Bogen aus der drueckenden Hand (Teleport.cs)
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
     }
 
