@@ -11,10 +11,12 @@
     <!--
         PWS1 PORT (XRStart 1.18.0): taken from the PWS2 configurator and cut down
         to what the PWS1 mod actually has. Removed: washer hand (PWS1 is right
-        hand only), orange gloves, aiming laser, snap turn, vignette, comfort
-        preset, grip fine-tuning, the cat launch joke. Added: pickup reach,
-        desktop mirror, a DEVELOPMENT panel (AutoStart, skip loading screen,
-        cheats). A control without an effect is worse than none.
+        hand only), orange gloves, aiming laser, comfort preset, grip
+        fine-tuning, the cat launch joke. Added: pickup reach, desktop mirror.
+        Snap turn and vignette came back with XRStart 1.23.0. The DEVELOPMENT
+        panel (AutoStart, skip loading screen, cheats) is gone again: players
+        get only what they need, those three live in the cfg. A control
+        without an effect is worse than none.
 
         Layout only. No x:Class and no event attributes anywhere: PowerShell
         loads this through XamlReader, which cannot resolve a code-behind class
@@ -608,7 +610,7 @@
                              Spieler mit "Alle aus" den Teleport hier und
                              schliesst, es gaebe keinen. Den Ziel-Teleport auf
                              dem Stick der Pistolenhand hat er trotzdem. -->
-                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}"
+                        <Border Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource PanelStyle}"
                                 VerticalAlignment="Stretch">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionTitle}" Text="COMFORT" />
@@ -618,30 +620,53 @@
 
                                 <CheckBox x:Name="TeleportCheck" Margin="0,2,0,6"
                                           Content="Teleport instead of walking" />
+                                <CheckBox x:Name="SnapTurnCheck" Margin="0,2,0,6"
+                                          Content="Snap turning instead of smooth" />
+                                <CheckBox x:Name="VignetteCheck" Margin="0,2,0,12"
+                                          Content="Vignette while moving" />
+
+                                <!-- Wie PWS2: GERASTERT auf 15, 30, 45, 60 - ein
+                                     Snap-Winkel von 37 Grad ist keine sinnvolle Groesse. -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Snap angle" />
+                                    <Slider x:Name="SnapAngleSlider" Grid.Column="1"
+                                            Minimum="15" Maximum="60"
+                                            TickFrequency="15" IsSnapToTickEnabled="True"
+                                            TickPlacement="BottomRight" />
+                                    <TextBlock x:Name="SnapAngleValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <!-- Stufenlos; bei 0 steht "none" statt "0 %" (PWS2). -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Vignette strength" />
+                                    <Slider x:Name="VignetteStrengthSlider" Grid.Column="1"
+                                            Minimum="0" Maximum="1" />
+                                    <TextBlock x:Name="VignetteStrengthValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,6,0,0"
-                                           Text="Left stick forward teleports from the left hand; walking is off. Snap turning and the vignette follow in a later version." />
+                                           Text="Teleport: left stick forward teleports from the left hand; walking is off." />
                             </StackPanel>
                         </Border>
 
-                        <!-- GRIFF -->
-                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}"
-                                VerticalAlignment="Stretch">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionTitle}"
-                                           Text="DEVELOPMENT" />
-                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,14"
-                                           Text="Test aids while the mod is being built. Cheats write money into the save game - the original is backed up in savegame-backup, tools/savegame-switch.ps1 switches back." />
-
-                                <CheckBox x:Name="AutoStartCheck" Margin="0,2,0,6"
-                                          Content="Start VR, head and washer automatically" />
-                                <CheckBox x:Name="SkipLoadingCheck" Margin="0,2,0,6"
-                                          Content="Confirm the loading screen automatically" />
-                                <CheckBox x:Name="CheatsCheck" Margin="0,2,0,6"
-                                          Content="Cheats: money, all jobs, shop without stars" />
-                            </StackPanel>
-                        </Border>
+                        <!-- ENTWICKLUNG ist raus (Nutzer 28.09.): AutoStart und
+                             SkipLoadingContinue sind immer an, DevCheats ist in
+                             der Auslieferung aus - alle drei nur noch in der cfg
+                             (Vorgaben in DevTools.cs). -->
                     </Grid>
 
                 </StackPanel>

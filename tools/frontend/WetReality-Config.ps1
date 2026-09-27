@@ -611,9 +611,13 @@ function Load-Settings {
     (Ctl 'SprayHapticsCheck').IsChecked = (Read-CfgValue -Key 'SprayHaptics' -Fallback 'true') -eq 'true'
     (Ctl 'VrHandsCheck').IsChecked = (Read-CfgValue -Key 'ShowVrHands' -Fallback 'true') -eq 'true'
     (Ctl 'TeleportCheck').IsChecked = (Read-CfgValue -Key 'ComfortTeleport' -Fallback 'false') -eq 'true'
-    (Ctl 'AutoStartCheck').IsChecked = (Read-CfgValue -Key 'AutoStart' -Fallback 'true') -eq 'true'
-    (Ctl 'SkipLoadingCheck').IsChecked = (Read-CfgValue -Key 'SkipLoadingContinue' -Fallback 'true') -eq 'true'
-    (Ctl 'CheatsCheck').IsChecked = (Read-CfgValue -Key 'DevCheats' -Fallback 'true') -eq 'true'
+    # Comfort.cs (XRStart 1.23.0), PWS2 names and defaults.
+    (Ctl 'SnapTurnCheck').IsChecked = (Read-CfgValue -Key 'SnapTurn' -Fallback 'false') -eq 'true'
+    (Ctl 'VignetteCheck').IsChecked = (Read-CfgValue -Key 'ComfortVignette' -Fallback 'false') -eq 'true'
+    (Ctl 'SnapAngleSlider').Value = [double](Read-CfgValue -Key 'SnapAngle' -Fallback '45')
+    (Ctl 'VignetteStrengthSlider').Value = [double](Read-CfgValue -Key 'VignetteStrength' -Fallback '0.7')
+    # AutoStart, SkipLoadingContinue and DevCheats are not player options any
+    # more (user 28.09.): not read and never written - the cfg keeps its values.
 
     # An unknown name lands on the mod's default, the same rule the mod applies.
     $colour = (Read-CfgValue -Key 'PointerColor' -Fallback 'blue').ToLowerInvariant()
@@ -638,6 +642,17 @@ function Update-Labels {
     (Ctl 'UiDistanceValue').Text = "$((Format-Float ([Math]::Round((Ctl 'UiDistanceSlider').Value, 1)))) m"
     (Ctl 'ReachValue').Text = "$((Format-Float ([Math]::Round((Ctl 'ReachSlider').Value, 1)))) m"
     (Ctl 'MarkerSizeValue').Text = "$([int]((Ctl 'MarkerSizeSlider').Value * 100)) cm"
+
+    $deg = [char]0x00B0
+    (Ctl 'SnapAngleValue').Text = "$([int](Ctl 'SnapAngleSlider').Value)$deg"
+    # At 0 the word says the vignette is off - "0 %" reads like a measurement (PWS2).
+    $strength = [int]((Ctl 'VignetteStrengthSlider').Value * 100)
+    if ($strength -le 0) { (Ctl 'VignetteStrengthValue').Text = T 'none' }
+    else { (Ctl 'VignetteStrengthValue').Text = "$strength %" }
+
+    # A slider for a switched-off feature is greyed, not hidden (PWS2).
+    (Ctl 'SnapAngleSlider').IsEnabled = [bool](Ctl 'SnapTurnCheck').IsChecked
+    (Ctl 'VignetteStrengthSlider').IsEnabled = [bool](Ctl 'VignetteCheck').IsChecked
 }
 
 function Mark-Dirty {
@@ -649,12 +664,17 @@ function Mark-Dirty {
 # --------------------------------------------------------------------- events
 
 foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider', 'UiScaleSlider',
-                    'UiDistanceSlider', 'ReachSlider', 'MarkerSizeSlider')) {
+                    'UiDistanceSlider', 'ReachSlider', 'MarkerSizeSlider',
+                    'SnapAngleSlider', 'VignetteStrengthSlider')) {
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
 }
 
-foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
-                    'AutoStartCheck', 'SkipLoadingCheck', 'CheatsCheck')) {
+# These two also grey their slider, so they refresh the labels too.
+foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
+    (Ctl $name).Add_Click({ Update-Labels; Mark-Dirty })
+}
+
+foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
@@ -717,9 +737,10 @@ foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
             'ShowVrHands'        = Format-Bool ([bool](Ctl 'VrHandsCheck').IsChecked)
             'TeleportMarkerSize' = Format-Float ([Math]::Round((Ctl 'MarkerSizeSlider').Value, 2))
             'ComfortTeleport'    = Format-Bool ([bool](Ctl 'TeleportCheck').IsChecked)
-            'AutoStart'          = Format-Bool ([bool](Ctl 'AutoStartCheck').IsChecked)
-            'SkipLoadingContinue' = Format-Bool ([bool](Ctl 'SkipLoadingCheck').IsChecked)
-            'DevCheats'          = Format-Bool ([bool](Ctl 'CheatsCheck').IsChecked)
+            'SnapTurn'           = Format-Bool ([bool](Ctl 'SnapTurnCheck').IsChecked)
+            'SnapAngle'          = Format-Float ([Math]::Round((Ctl 'SnapAngleSlider').Value))
+            'ComfortVignette'    = Format-Bool ([bool](Ctl 'VignetteCheck').IsChecked)
+            'VignetteStrength'   = Format-Float ([Math]::Round((Ctl 'VignetteStrengthSlider').Value, 2))
             # As names in quotes, the way MelonPreferences keeps a string entry.
             'PointerColor'       = "`"$($script:PointerColors[[Math]::Max(0, (Ctl 'PointerColorBox').SelectedIndex)])`""
             'DesktopMirror'      = "`"$($script:MirrorModes[[Math]::Max(0, (Ctl 'MirrorBox').SelectedIndex)])`""

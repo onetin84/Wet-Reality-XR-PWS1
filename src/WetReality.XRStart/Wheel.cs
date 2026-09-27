@@ -138,6 +138,7 @@ public sealed partial class XRStart
     private const float WheelPointerRadius = 0.12f, WheelCommitSeconds = 0.15f, WheelRingShare = 0.8f;
     private static float wheelSlotMag;          // Segmentabstand der offenen Kategorie (Postfix)
     private static float wheelRingUnits;        // Ringradius in Canvas-Einheiten (aus der Messung)
+    private static float wheelRingWorld;        // derselbe Radius in Welt-Metern, fuer Select (1.19.3)
     private float wheelChildDumpAt = -1f;
     private float wheelRingMeters;           // Radius der Slot-Symbole, gemessen je Scheibe
     private bool wheelShadersLogged;
@@ -205,8 +206,16 @@ public sealed partial class XRStart
     {
         // Ringgroesse statt des Spielwerts (der liest 0): jede Richtung weit ueber
         // jeder Totzone, auch schraeg.
-        float mag = Math.Max(Math.Max(cat.GetSlotOffsetMagnitude(), wheelRingUnits), 300f);
-        cat.Select(new Vector3(dir.x, dir.y, 0f) * mag * 1.2f);
+        // WELTRAUM (1.19.3, disassembliert): Select nimmt das Segment mit dem
+        // kleinsten 3D-Abstand zu GetSlotItemOffset = Icon.position - Slot.position,
+        // also WELT-Meter. Flach sind Welt und Pixel eins; in VR steht die Scheibe
+        // gedreht (Gier ~259 Grad) - ein XY-Vektor in Canvas-Einheiten trennte nur
+        // oben/unten (1.19.1 "gespiegelt", 1.19.2 rechts -> 12/6 Uhr).
+        // Darum: Richtung in der Scheibenebene, in die Welt gedreht, Ringradius in m.
+        var t = cat.transform;
+        float meters = wheelRingWorld > 0.01f ? wheelRingWorld : 0.3f;
+        var world = (t.right * dir.x + t.up * dir.y).normalized * meters;
+        cat.Select(world);
         wheelSelects++;
     }
 
@@ -324,12 +333,14 @@ public sealed partial class XRStart
             if (ringNow > wheelRingMeters) wheelRingMeters = ringNow;
             float unitNow = radialInst == null ? 0f : Math.Abs(radialInst.transform.lossyScale.x);
             wheelRingUnits = unitNow > 1e-7f ? wheelRingMeters / unitNow : 0f;
+            wheelRingWorld = wheelRingMeters;
             Vector2 v = wheelRingMeters > 0.01f
                 ? vm / (wheelRingMeters * WheelRingShare)
                 : vm / WheelPointerRadius;
 
-            // Stick hat Vorrang, wenn ausgelenkt; sonst der Zeiger.
-            var st = r.TryGetChildControl("thumbstick")?.TryCast<Vector2Control>();
+            // Stick hat Vorrang, wenn ausgelenkt; sonst der Zeiger. Der LINKE Stick
+            // (Nutzer 1.19.3): der rechte haelt R3 gedrueckt und oeffnet die Scheibe.
+            var st = XRController.leftHand?.TryGetChildControl("thumbstick")?.TryCast<Vector2Control>();
             var sv = st == null ? Vector2.zero : st.ReadValue();
             bool stick = sv.magnitude > 0.5f;
             wheelWant = stick ? sv : (v.magnitude >= 1f ? v : Vector2.zero);

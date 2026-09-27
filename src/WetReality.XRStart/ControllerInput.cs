@@ -93,7 +93,7 @@ public sealed partial class XRStart
             // Gehen und Sprint
             var ls = Stick(l);
             var mv = ls == null ? Vector2.zero : ls.ReadValue();
-            if (tpComfortActive) mv = Vector2.zero;   // Komfort: der linke Stick teleportiert statt zu gehen (Teleport.cs)
+            if (tpComfortActive || wheelOpen) mv = Vector2.zero;   // Komfort: der linke Stick teleportiert statt zu gehen (Teleport.cs); offene Scheibe: er waehlt (Wheel.cs)
 
             // Tragen + linker Griff: der linke Stick dreht das Objekt, das Gehen
             // steht still (PWS2 DriveItemRotation). PWS1-Weg wie
@@ -117,6 +117,7 @@ public sealed partial class XRStart
             if (mv.magnitude > MoveDeadZone)
             {
                 __instance.MovementRaw = mv;
+                vigMoveDemand = Math.Max(vigMoveDemand, Mathf.Clamp01(mv.magnitude));   // Vignette (Comfort.cs)
                 weMove = true;
                 moveFrames++;
             }
@@ -464,10 +465,9 @@ public sealed partial class XRStart
             // Der Stick macht eins (PWS2 TeleportTurnLock): nach vorn gedrueckt oder
             // beim Zielen dreht er nicht - auch nicht in der Einschwingzeit.
             if ((tpAiming && !tpFromLeftStatic) || (rv.y > Math.Abs(rv.x) && rv.y > 0.2f)) return;
-            if (Math.Abs(x) <= TurnDeadZone) return;
-            // Aus der Totzone heraus weich einsetzen, nicht mit einem Sprung.
-            float s = Math.Sign(x) * (Math.Abs(x) - TurnDeadZone) / (1f - TurnDeadZone);
-            float d = s * TurnSpeed * Time.unscaledDeltaTime;
+            // Gleitend oder Snap-Turn (1.23.0, Comfort.cs); 0 = nichts zu drehen.
+            float d = ComfortTurn(x, TurnDeadZone);
+            if (d == 0f) return;
             bodyYaw = Mathf.Repeat(bodyYaw + d, 360f);
             turnSum += d;
         }

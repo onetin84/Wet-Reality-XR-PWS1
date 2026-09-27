@@ -23,8 +23,8 @@
 //     angewandt - sonst bleibt die UI weltfest stehen.
 //   - Alles umkehrbar: F10 und XR-Stopp nehmen zurueck (Modus, Kamera, Abstand,
 //     Maske, Skalierung, ZTest).
-// Im Hauptmenue gibt es keine 3D-Kamera (Camera.main null) - dort bleibt es
-// beim Overlay, das Headset schwarz (eigene Loesung, spaeter).
+// Im Hauptmenue gibt es keine 3D-Kamera (Camera.main null) - seit 1.22.0 stellt
+// MenuCamera.cs dort eine eigene (Tag MainCamera), und alles hier gilt unveraendert.
 
 using UnityEngine;
 
@@ -63,7 +63,7 @@ public sealed partial class XRStart
             LoggerInstance.Msg($"F10: UI im Headset {(vrUiWanted ? "AN" : "AUS (Overlay wie das Spiel)")}");
         }
 
-        bool want = vrUiWanted && started && writeHead;
+        bool want = vrUiWanted && started && (writeHead || menuCamOn);   // Hauptmenue: ohne Kopfschreiber (MenuCamera.cs)
         if (!want)
         {
             if (uiConverted) RestoreUi(started ? "F10/Kopf aus" : "XR aus");

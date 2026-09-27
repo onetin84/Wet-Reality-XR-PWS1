@@ -80,3 +80,5 @@ tools/*.log
 savegame-backup/
 # Konfigurator-Grafiken: lokal, nicht versioniert (wie PWS2; im Paket spaeter base64)
 tools/frontend/assets/*.png
+# Startlogo, lokal wie die Konfigurator-Grafiken (Quelle tools/frontend/assets/startup-logo.png)
+src/WetReality.XRStart/Resources/*.png

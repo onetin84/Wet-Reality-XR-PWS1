@@ -50,6 +50,7 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<string> prefSkyFix = null!, prefSkyColor = null!;
     private MelonPreferences_Entry<bool> prefComfortTeleport = null!;
     private MelonPreferences_Entry<float> prefTeleportJumpSpeed = null!;
+    private MelonPreferences_Entry<bool> prefTeleportSlopeWalk = null!;
     private MelonPreferences_Entry<float> prefTurnSpeed = null!, prefHapticIntensity = null!, prefUiScale = null!, prefUiDistance = null!;
     private MelonPreferences_Entry<bool> prefSprayHaptics = null!;
     private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
@@ -59,7 +60,9 @@ public sealed partial class XRStart
         var cat = MelonPreferences.CreateCategory("WetReality_XRStart");
         prefAutoStart = cat.CreateEntry("AutoStart", true, description: "F8/F7/F5 automatisch, sobald ein Level geladen ist");
         prefSkipContinue = cat.CreateEntry("SkipLoadingContinue", true, description: "Ladebildschirm (Steuerungshilfe) automatisch mit Weiter bestaetigen");
-        prefCheats = cat.CreateEntry("DevCheats", true, description: "Guthaben auffuellen und Jobs freischalten - schreibt in den Spielstand");
+        // AUS in der Auslieferung (Nutzer 28.09.). Die Entwicklungs-cfg behaelt ihr
+        // true - eine vorhandene cfg sieht geaenderte Vorgaben nie (MelonPreferences).
+        prefCheats = cat.CreateEntry("DevCheats", false, description: "Guthaben auffuellen und Jobs freischalten - schreibt in den Spielstand. Nur fuer die Entwicklung; tools/savegame-switch.ps1 schaltet zurueck.");
         prefMirror = cat.CreateEntry("DesktopMirror", "left", description: "Headsetbild auf dem Monitor: left, right, both oder off");
         prefInteractionRange = cat.CreateEntry("InteractionRange", 5f, description: "Meter ab der linken Hand, in denen Objekte zum Aufnehmen gefunden werden (PWS2: 5)");
         prefHands = cat.CreateEntry("ShowVrHands", true, description: "VR-Haende des Spiels an den Controllern, Spielarme ausgeblendet");
@@ -75,6 +78,9 @@ public sealed partial class XRStart
         prefSkyColor = cat.CreateEntry("SkyColor", "0.55,0.72,0.92", description: "Himmelsfarbe fuer SkyFix=solid, r,g,b 0..1");
         InitSky();
         InitPointerStyle(cat);   // PointerColor & Teleportziel (PointerStyle.cs)
+        InitMenuCamera(cat);     // Hauptmenue im Headset (MenuCamera.cs)
+        InitSplash(cat);         // Startlogo im Headset (Splash.cs)
+        InitComfort(cat);        // Snap-Turn, Vignette, Teleport-Blende (Comfort.cs)
         // Fuer den Konfigurator (tools/frontend), Namen wie PWS2; Vorgaben = die frueheren festen Werte.
         prefTurnSpeed = cat.CreateEntry("TurnSpeed", 90f, description: "Grad pro Sekunde fuer das Drehen mit dem rechten Stick");
         prefSprayHaptics = cat.CreateEntry("SprayHaptics", true, description: "Dauervibration rechts beim Spruehen (Staerke nach Duese, Washer, Oberflaeche)");
@@ -84,7 +90,8 @@ public sealed partial class XRStart
         // Namen wie PWS2 - fuer den spaeteren Konfigurator.
         prefComfortTeleport = cat.CreateEntry("ComfortTeleport", false, description: "Komfort: linker Stick nach vorn teleportiert aus der linken Hand und ersetzt das Gehen. Der Ziel-Teleport auf der Pistolenhand wirkt immer.");
         prefTeleportJumpSpeed = cat.CreateEntry("TeleportJumpSpeed", 7f, description: "m/s. Waagerechtes Tempo der Sprungparabel, die die Teleportweite begrenzt (PWS2 gemessen: 7,0 mit Sprint)");
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2} TurnSpeed={prefTurnSpeed.Value:F0} SprayHaptics={prefSprayHaptics.Value} HapticIntensity={prefHapticIntensity.Value:F2} UiScale={prefUiScale.Value:F4} UiDistance={prefUiDistance.Value:F2}");
+        prefTeleportSlopeWalk = cat.CreateEntry("TeleportSlopeWalk", true, description: "Treppe/Rampe als Weg (PWS2 Abschnitt 159): liegt das Ziel ueber der Kantengrenze, wird der Boden vom Fuss dorthin in 0,18-m-Schritten abgegangen; jede Stufe <= 0,45 m hoch ist ein Weg.");
+        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} TeleportSlopeWalk={prefTeleportSlopeWalk.Value} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2} TurnSpeed={prefTurnSpeed.Value:F0} SprayHaptics={prefSprayHaptics.Value} HapticIntensity={prefHapticIntensity.Value:F2} UiScale={prefUiScale.Value:F4} UiDistance={prefUiDistance.Value:F2}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 
@@ -143,13 +150,16 @@ public sealed partial class XRStart
                 case 0:
                     if (started) { autoStep = 3; return; }   // von Hand gestartet
                     bool loading = now - lastLoadingAt < 1f;
+                    bool mainMenu = false;
                     if (!loading)
                     {
                         if (now < nextAutoProbe) return;
                         nextAutoProbe = now + 0.1f;
-                        if (UnityEngine.Object.FindObjectOfType<PlayerCameraController>() == null || Camera.main == null) return;
+                        // 1.22.0: auch im Hauptmenue - dort zeigt es die Menuekamera (MenuCamera.cs).
+                        mainMenu = prefMenuCamera.Value && InMainMenu();
+                        if (!mainMenu && (UnityEngine.Object.FindObjectOfType<PlayerCameraController>() == null || Camera.main == null)) return;
                     }
-                    LoggerInstance.Msg($"AUTOSTART: F8 ({(loading ? "Level laedt" : "Spielercharakter da")})");
+                    LoggerInstance.Msg($"AUTOSTART: F8 ({(loading ? "Level laedt" : mainMenu ? "Hauptmenue" : "Spielercharakter da")})");
                     Start();
                     if (!started) { LoggerInstance.Warning("AUTOSTART: XR nicht gestartet - Rest abgebrochen, F8 von Hand"); autoStep = 3; return; }
                     autoStep = 1;

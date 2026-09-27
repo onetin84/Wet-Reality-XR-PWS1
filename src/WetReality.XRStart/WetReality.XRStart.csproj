@@ -12,9 +12,9 @@
     <DebugType>embedded</DebugType>
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
-    <Version>1.19.1</Version>
-    <AssemblyVersion>1.19.1</AssemblyVersion>
-    <FileVersion>1.19.1</FileVersion>
+    <Version>1.23.0</Version>
+    <AssemblyVersion>1.23.0</AssemblyVersion>
+    <FileVersion>1.23.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
@@ -56,5 +56,13 @@
     <Reference Include="Unity.Addressables" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.Addressables.dll" Private="false" />
     <Reference Include="Unity.ResourceManager" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.ResourceManager.dll" Private="false" />
     <Reference Include="Il2CppInterop.Common" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Common.dll" Private="false" />
+    <!-- ImageConversion.LoadImage fuer das Startlogo (Splash.cs) -->
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.ImageConversionModule.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Startlogo IN die DLL (wie PWS2); der Name wird in Splash.cs gelesen. -->
+    <!-- Nur wenn vorhanden: das PNG ist lokal (.gitignore); ohne es meldet Splash.cs die fehlende Ressource. -->
+    <EmbeddedResource Include="Resources\startup-logo.png" LogicalName="WetReality.startup-logo.png" Condition="Exists('Resources\startup-logo.png')" />
   </ItemGroup>
 </Project>

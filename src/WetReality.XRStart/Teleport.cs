@@ -23,7 +23,9 @@
 //     Boden unter dem Ziel, Platzprobe CheckCapsule r 0,22 m, 0,45-1,65 m.
 //   - Nach unten keine Grenze (Leiter, Dach) - ins Leere geht es nicht, der Bogen
 //     muss treffen.
-// NOCH NICHT (Stufe 2): Treppe als Weg (TeleportSlopeWalk), Leiter-Ziel.
+// 1.21.0: Treppe als Weg (TeleportSlopeWalk, WalkableSlope unten). Vorspruenge
+//   (PWS2 Abschnitt 156/160) waren schon da: Kante <= h + 0,35, Probe ab 0,45 m.
+// NOCH NICHT: Leiter-Ziel (PWS2 TryLadderTop) - erst die PWS1-Leiter messen.
 //
 // 1.17.1: Zielmarker wie PWS2 (PointerStyle.cs), eine Farbe fuer alle Zeiger
 //   (PointerColor, Vorgabe blue), KEIN Teleport beim Spruehen (Nutzer): kein
@@ -60,6 +62,8 @@ public sealed partial class XRStart
     private float tpNextWhyLog;
     private string tpLastWhy = "";
     private int tpDone;
+    private bool tpToolHidden;
+    private float tpNextHide;
 
     // In onBeforeRender nach Kopf und Pistole.
     private void DriveTeleport()
@@ -85,6 +89,8 @@ public sealed partial class XRStart
             // Halten nur ueber Richtung und Totzone: seitlich rollen bricht nicht ab.
             if (st.magnitude < TpRelease) { EndAim(true); return; }
             if (st.y < 0f) { EndAim(false); return; }   // nach hinten gezogen = abbrechen
+            // Duese/Waffe kann neue Renderer einschalten: nachfassen wie das Menue.
+            if (tpToolHidden && now >= tpNextHide) { tpNextHide = now + 0.3f; HideTool(); }
 
             AimArc(c);
         }
@@ -112,6 +118,9 @@ public sealed partial class XRStart
         tpFromLeft = left;
         tpFromLeftStatic = left;
         LoggerInstance.Msg($"TELEPORT: zielen ({(left ? "linke Hand, Komfort" : "Pistolenhand")})");
+        // Aus der Pistolenhand verdeckt das Werkzeug den Bogen (Nutzer 1.19.3):
+        // ausgeblendet bis zum Sprung/Abbruch - derselbe Weg wie im Menue.
+        if (!left) { HideTool(); tpToolHidden = true; tpNextHide = now + 0.3f; }
     }
 
     private void AimArc(XRController? c)
@@ -179,14 +188,19 @@ public sealed partial class XRStart
         else
         {
             float rise = hit.y - foot.y;
-            if (rise > h + TpRiseTolerance) tpWhy = $"zu hoch: {rise:F2} m > {h + TpRiseTolerance:F2} m";
+            string slope = "";
+            // Ueber der Kantengrenze erst der kletternde Gang (PWS2 Abschnitt 159):
+            // eine Treppe ist kein Sprungziel, sondern ein Weg.
+            bool tooHigh = rise > h + TpRiseTolerance
+                && !(prefTeleportSlopeWalk.Value && WalkableSlope(foot, hit, mask, out slope));
+            if (tooHigh) tpWhy = $"zu hoch: {rise:F2} m > {h + TpRiseTolerance:F2} m" + (prefTeleportSlopeWalk.Value ? " - " + slope : "");
             else if (!Physics.Raycast(hit + Vector3.up * 0.1f, Vector3.down, 0.3f, mask, QueryTriggerInteraction.Ignore)) tpWhy = "kein Boden (Wand?)";
             else
             {
                 var bottom = hit + Vector3.up * (TpProbeLift + TpProbeRadius);
                 var top = hit + Vector3.up * (TpProbeTop - TpProbeRadius);
                 if (Physics.CheckCapsule(bottom, top, TpProbeRadius, mask, QueryTriggerInteraction.Ignore)) tpWhy = "kein Platz";
-                else { tpValid = true; tpWhy = $"ok, {Vector3.Distance(new Vector3(hit.x, 0, hit.z), new Vector3(foot.x, 0, foot.z)):F2} m, Hoehe {rise:+0.00;-0.00} m"; }
+                else { tpValid = true; tpWhy = $"ok, {Vector3.Distance(new Vector3(hit.x, 0, hit.z), new Vector3(foot.x, 0, foot.z)):F2} m, Hoehe {rise:+0.00;-0.00} m" + (slope.Length > 0 ? " ueber Treppe/Rampe: " + slope : ""); }
             }
         }
         tpTarget = hit;
@@ -195,11 +209,47 @@ public sealed partial class XRStart
         DrawTeleport(hitSomething);
     }
 
+    // DER KLETTERNDE GANG, Port von PWS2 WalkableSlope (Abschnitt 159): vom Fuss
+    // zum Ziel in Schritten von TpSlopeSpacing; je Schritt Boden im Band
+    // [Bezug - Drop, Bezug + Rise] suchen, die Bezugshoehe wandert mit. Treppe
+    // und Rampe = viele kleine Schritte -> ja; Wand = ein grosser -> nein.
+    // Luecken (offene Treppe) lassen den Bezug stehen statt abzubrechen. Das
+    // Band verhindert, dass der tiefe Boden UNTER einer Treppe getroffen wird.
+    private const float TpSlopeSpacing = 0.18f, TpSlopeRise = 0.45f, TpSlopeDrop = 0.6f;
+
+    private static bool WalkableSlope(Vector3 foot, Vector3 target, int mask, out string detail)
+    {
+        var footFlat = new Vector3(foot.x, 0f, foot.z);
+        var targetFlat = new Vector3(target.x, 0f, target.z);
+        float span = (targetFlat - footFlat).magnitude;
+        if (span < 0.05f) { detail = "Gang: kein Abstand"; return false; }
+        int samples = Mathf.Clamp(Mathf.RoundToInt(span / TpSlopeSpacing), 3, 60);
+        float reference = foot.y;
+        int found = 0;
+        for (int i = 1; i <= samples; i++)
+        {
+            var flat = Vector3.Lerp(footFlat, targetFlat, (float)i / samples);
+            float top = reference + TpSlopeRise, len = TpSlopeRise + TpSlopeDrop;
+            var start = new Vector3(flat.x, top, flat.z);
+            if (!Physics.Raycast(start, Vector3.down, len, mask, QueryTriggerInteraction.Ignore)) continue;
+            // Bisektion wie beim Bogen: 8 Schritte ueber ~1 m sind 4 mm.
+            float lo = 0f, hi = len;
+            for (int k = 0; k < 8; k++) { float mid = (lo + hi) * 0.5f; if (Physics.Raycast(start, Vector3.down, mid, mask, QueryTriggerInteraction.Ignore)) hi = mid; else lo = mid; }
+            reference = top - hi;
+            found++;
+        }
+        bool ok = target.y <= reference + TpSlopeRise;
+        detail = $"Gang {found}/{samples} mit Boden, {foot.y:F2} -> {reference:F2} m, Ziel {target.y:F2} m, Strecke {span:F2} m";
+        return ok;
+    }
+
     private void EndAim(bool jump)
     {
         if (!tpAiming) { HideTeleport(); return; }
         tpAiming = false;
         HideTeleport();
+        // Wieder zeigen - ausser das Menue hat uebernommen, das haelt es selbst verborgen.
+        if (tpToolHidden) { tpToolHidden = false; if (!menuMode) ShowTool(); }
         if (!jump) { LoggerInstance.Msg("TELEPORT: abgebrochen"); return; }
         if (!tpValid) { LoggerInstance.Msg("TELEPORT: kein Sprung - " + tpWhy); Buzz(tpFromLeft ? false : true, "Teleport ungueltig"); return; }
         var ch = charCtl;
@@ -218,6 +268,7 @@ public sealed partial class XRStart
             ch.transform.position = ch.transform.position + delta;
             tpDone++;
             LoggerInstance.Msg($"TELEPORT: gesprungen um {delta.ToString("F2")} ({tpWhy}) - {tpDone}. Teleport");
+            VignetteBlink(prefTeleportBlink.Value);   // kurze Blende, auch ohne Vignette (Comfort.cs)
             Buzz(tpFromLeft ? false : true, "Teleport");
         }
         catch (Exception e) { LoggerInstance.Warning("TELEPORT: Versetzen " + e.GetType().Name + ": " + e.Message); }

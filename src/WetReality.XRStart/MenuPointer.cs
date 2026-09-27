@@ -176,7 +176,7 @@ public sealed partial class XRStart
     private void DriveMenuPointer()
     {
         if (KeyPressed(VK_F11, ref f11WasDown, "F11")) { menuTopmost = !menuTopmost; LoggerInstance.Msg($"F11: Menue-Ziel {(menuTopmost ? "oberstes Graphic (1.9.7)" : "kleinster Knopf (1.9.4)")}"); }
-        bool active = started && writeHead && uiConverted && uiRoot != null && InMenuScreen();
+        bool active = started && (writeHead || menuCamOn) && uiConverted && uiRoot != null && InMenuScreen();
         if (active != menuMode)
         {
             menuMode = active;

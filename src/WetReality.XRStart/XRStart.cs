@@ -147,6 +147,13 @@
 // 1.18.0: TurnSpeed, SprayHaptics, HapticIntensity, UiScale, UiDistance als cfg (Konfigurator).
 // 1.19.0: Waehlscheibe - in Weltkoordinaten gedrehte Segmente auf lokal umgerechnet.
 // 1.19.1: Waehlscheibe - Auswahl-Ausschlag in Ringgroesse (schraege Segmente).
+// 1.19.2: Waehlscheibe - X-Achse fuer Select gespiegelt (schraege Segmente rechts).
+// 1.19.3: Waehlscheibe - Select im WELTRAUM (Abstand zu Icon-Weltversatz), X-Spiegel zurueck.
+// 1.20.0: Scheibe waehlt per LINKEM Stick (Gehen ruht); Teleport aus der Pistolenhand blendet das Werkzeug aus.
+// 1.21.0: Teleport - Treppe/Rampe als Weg (kletternder Gang, Port PWS2 Abschnitt 159).
+// 1.22.0: Hauptmenue im Headset - eigene Menuekamera ohne Spielerkamera (MenuCamera.cs), Autostart schon im Hauptmenue.
+// 1.22.1: Menuekamera rendert auch Ebene 0 (Zeigestrahl); Startlogo im Headset wie PWS2 (Splash.cs).
+// 1.23.0: Komfort wie PWS2 - Snap-Turn, Vignette, Teleport-Blende (Comfort.cs).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -164,7 +171,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.19.1", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.23.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -386,6 +393,7 @@ public sealed partial class XRStart : MelonMod
         if (writeHead) MeasurePoseGap();
         if (writeHead && writeAtRender) DriveHead();
         if (writeHead) DriveOffHandPointer();   // X zielt mit der linken Hand (Pointer.cs)
+        DriveMenuCamera();                      // Hauptmenue: eigene Kamera folgt dem HMD (MenuCamera.cs)
         DriveMenuPointer();                     // Menue: Strahl rechts, Trigger klickt (MenuPointer.cs)
         DriveWheelPointer();                    // Waehlscheibe: Zeiger-Kette und Ausrichtung (Wheel.cs)
         // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
@@ -393,6 +401,7 @@ public sealed partial class XRStart : MelonMod
         DriveVrHands();   // nach Kopf und Pistole, dieselbe Kamera (VrHands.cs)
         DriveHandPoses(); // Parameter wirken im naechsten Animator-Takt (HandPoses.cs)
         DriveTeleport();  // Bogen aus der drueckenden Hand (Teleport.cs)
+        DriveVignette();  // Komfort-Vignette und Teleport-Blende vor die finale Kamera (Comfort.cs)
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
     }
 
@@ -505,6 +514,8 @@ public sealed partial class XRStart : MelonMod
         TickPickupDiag();
         TickDevTools();
         TickUiProbe();
+        TickMenuCamera();   // vor TickVrUi: im Hauptmenue die eigene Kamera (MenuCamera.cs)
+        TickSplashArm();    // Startlogo auf dem XR-Start spannen (Splash.cs)
         TickVrUi();
         TickSky();
         if (started && Time.unscaledTime >= nextInputLog)
@@ -583,6 +594,7 @@ public sealed partial class XRStart : MelonMod
     public override void OnLateUpdate()
     {
         if (radialInst != null) ApplyWheelPlacement(radialInst.transform);   // vor dem Canvas-Bau (Wheel.cs)
+        TickSplash();   // Startlogo vor die Kamera, die sich schon bewegt hat (Splash.cs)
         float now = Time.unscaledTime;
         if (now < reportUntil && now >= nextReport)
         {
