@@ -135,6 +135,13 @@
 // 1.11.0: VR-Haende des Spiels an den Controllern, Spielarme aus (VrHands.cs).
 // 1.12.0: Fingerposen ueber die Animator-Parameter des Spiels, folgen den Controllern (HandPoses.cs).
 // 1.13.0: Himmel - Messung und SkyFix, F2 (SkyFix.cs); rechte Hand feste Griffpose wie PWS2.
+// 1.14.0: Waehlscheibe auf R3 halten, Y kurz Inventar, Y lang naechster Washer (Wheel.cs).
+// 1.15.0: Scheibe waehlt per Zeiger-Kette/Stick (Select), zum Betrachter; Zeiger im Inventar.
+// 1.15.1: Scheibe oeffnet am Strahlpunkt, Auswahl erst auf dem Ring, Knoten-Dump.
+// 1.15.2: Ringradius aus den Slot-Knoten (Segmentabstand las 0), Shader-Messung.
+// 1.15.3: Scheibe weltfest (Position + Drehung vom Oeffnen), Ring je Frame als Maximum.
+// 1.15.4: Lage der Scheibe auch in Update/LateUpdate, Messung fremder Ueberschreibung.
+// 1.16.0: AutoStart ohne feste Pausen, XR schon beim Laden des Levels.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -152,7 +159,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.13.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.16.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -229,6 +236,7 @@ public sealed partial class XRStart : MelonMod
         PatchGunWriters();
         PatchGunFixes();
         PatchControllerInput();
+        PatchWheel();
         self = this;
         HookBeforeRender();   // seit 0.6.2 auch Schreibpunkt, nicht nur F9-Messung
         InitDevTools();       // Autostart, Ladebildschirm, Cheats (DevTools.cs)
@@ -374,6 +382,7 @@ public sealed partial class XRStart : MelonMod
         if (writeHead && writeAtRender) DriveHead();
         if (writeHead) DriveOffHandPointer();   // X zielt mit der linken Hand (Pointer.cs)
         DriveMenuPointer();                     // Menue: Strahl rechts, Trigger klickt (MenuPointer.cs)
+        DriveWheelPointer();                    // Waehlscheibe: Zeiger-Kette und Ausrichtung (Wheel.cs)
         // Pistole nach dem Kopf: sie rechnet aus der Kamera, die der Kopf eben gesetzt hat.
         if (writeGun) { DriveGun(); ApplyGunFixes(); }
         DriveVrHands();   // nach Kopf und Pistole, dieselbe Kamera (VrHands.cs)
@@ -567,6 +576,7 @@ public sealed partial class XRStart : MelonMod
     // liest einen Fremdwert.
     public override void OnLateUpdate()
     {
+        if (radialInst != null) ApplyWheelPlacement(radialInst.transform);   // vor dem Canvas-Bau (Wheel.cs)
         float now = Time.unscaledTime;
         if (now < reportUntil && now >= nextReport)
         {

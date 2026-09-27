@@ -289,9 +289,35 @@ public sealed partial class XRStart
             var s = gameState.CurrentScreen;
             string name = s.ToString();
             if (name != lastScreen) { LoggerInstance.Msg($"MENUE: Screen {(lastScreen.Length == 0 ? "-" : lastScreen)} -> {name}"); lastScreen = name; nextMenuScan = 0f; nextGraphicScan = 0f; }
-            return s != GameScreen.Game && s != GameScreen.Loading && s != GameScreen.None;
+            if (s != GameScreen.Game && s != GameScreen.Loading && s != GameScreen.None) return true;
+            // Das Inventar (Y/E) ist ein Popup im Screen Game und sperrt die Eingabe.
+            return s == GameScreen.Game && InventoryOpen();
         }
         catch { gameState = null; return false; }
+    }
+
+    private GameObject? inventoryGo;
+    private float nextInventoryFind;
+    private bool inventoryWasOpen;
+
+    // Objekt 'InventoryPopup' (Canvas-Dump 1.7.0) aktiv UND BlockedInput -
+    // beides zusammen, weil ein Name allein ein schwacher Anker ist.
+    private bool InventoryOpen()
+    {
+        try
+        {
+            var pi = wheelPi;
+            if (pi == null || !pi.BlockedInput) { if (inventoryWasOpen) { inventoryWasOpen = false; LoggerInstance.Msg("MENUE: Inventar zu"); } return false; }
+            if ((inventoryGo == null || !inventoryGo.activeInHierarchy) && Time.unscaledTime >= nextInventoryFind)
+            {
+                nextInventoryFind = Time.unscaledTime + 0.3f;
+                inventoryGo = GameObject.Find("InventoryPopup");
+            }
+            bool open = inventoryGo != null && inventoryGo.activeInHierarchy;
+            if (open != inventoryWasOpen) { inventoryWasOpen = open; LoggerInstance.Msg(open ? $"MENUE: Inventar offen ('{PathOf(inventoryGo!.transform)}')" : "MENUE: Inventar zu"); }
+            return open;
+        }
+        catch { return false; }
     }
 
     private void ScanMenuCandidates()

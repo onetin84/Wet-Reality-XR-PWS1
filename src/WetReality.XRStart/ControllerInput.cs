@@ -247,6 +247,7 @@ public sealed partial class XRStart
             ProbeButtons(r, l);
             Inventory(r, "rechts", "trigger", "thumbstick", "primaryButton", "secondaryButton", "gripPressed", "thumbstickClicked");
             Inventory(l, "links", "thumbstick", "triggerPressed", "primaryButton", "thumbstickClicked", "menu");
+            DriveWheelAndY(pi, r, l);   // R3 Waehlscheibe, Y Inventar/Washer (Wheel.cs)
 
             if (Edge(r, "R", "primaryButton") && Free(pi, "A Springen"))
             {
@@ -272,7 +273,7 @@ public sealed partial class XRStart
             var rs = Stick(r);
             float y = rs == null ? 0f : rs.ReadValue().y;
             if (Math.Abs(y) < StickRearm) stickYArmed = true;
-            else if (stickYArmed && y < -StickFlick && !menuActive)
+            else if (stickYArmed && y < -StickFlick && !menuActive && !wheelOpen)
             {
                 // Nur runter: hoch gehoert dem Teleport (PWS2 §147), der Zyklus
                 // erreicht rueckwaerts weiter jede Duese.
@@ -284,7 +285,7 @@ public sealed partial class XRStart
                 }
             }
 
-            if (Edge(r, "R", "gripPressed"))
+            if (Edge(r, "R", "gripPressed") && !wheelOpen)   // offene Scheibe: Griff blaettert (Wheel.cs)
             {
                 fireLatched = !fireLatched;
                 btnEvents.Add($"Griff rechts: Dauerspruehen {(fireLatched ? "AN" : "AUS")}");
@@ -313,7 +314,7 @@ public sealed partial class XRStart
                 }
             }
 
-            if (Edge(l, "L", "gripPressed") && !pi.CarryItem)
+            if (Edge(l, "L", "gripPressed") && !pi.CarryItem && !wheelOpen)
                 HighlightDirt();
 
             if (Edge(l, "L", "thumbstickClicked") && Free(pi, "L3 Verlaengerung"))
@@ -451,7 +452,7 @@ public sealed partial class XRStart
     {
         inputStartedStatic = started;
         ResolveCharacter();
-        if (!inputOn || !started || !trackBody || menuActive) return;   // im Menue scrollt der Stick (MenuPointer.cs)
+        if (!inputOn || !started || !trackBody || menuActive || wheelOpen) return;   // im Menue scrollt der Stick (MenuPointer.cs)
         try
         {
             var rs = Stick(XRController.rightHand);

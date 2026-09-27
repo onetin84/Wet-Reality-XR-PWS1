@@ -3,10 +3,11 @@
 // Die cfg nur bei BEENDETEM Spiel aendern - MelonLoader schreibt sie beim
 // Beenden neu.
 //
-// AutoStart: F8, F7, F5 von selbst, sobald ein Spielercharakter da ist (im
-//   Hauptmenue gibt es keine 3D-Kamera, das Headset bliebe schwarz). Kopf erst,
-//   wenn das HMD getrackt ist; die Abstaende wie im Lauf 12:17 von Hand (F8,
-//   +2 s F7, +2 s F5). Einmal pro Spielstart: wer mit F8 stoppt, bleibt aus.
+// AutoStart: F8, F7, F5 von selbst. Seit 1.16.0 ohne feste Pausen: XR schon beim
+//   Laden des Levels (oder sobald ein Spielercharakter da ist), Kopf sobald HMD
+//   getrackt und Spielerkamera da, Pistole im Frame danach. Im Hauptmenue startet
+//   nichts (keine 3D-Kamera, das Headset bliebe schwarz). Einmal pro Spielstart:
+//   wer mit F8 stoppt, bleibt aus.
 //
 // SkipLoadingContinue: der Ladebildschirm (LoadingScreen mit Steuerungshilfe
 //   und Weiter-Knopf) wartet nach dem Laden auf "Weiter". Ist
@@ -108,9 +109,15 @@ public sealed partial class XRStart
 
     // ---------------------------------------------------------------- AutoStart
 
-    private int autoStep;            // 0 warten auf Level, 1 XR laeuft, 2 Kopf an, 3 fertig
-    private float autoAt, autoDeadline, nextAutoProbe;
+    private int autoStep;            // 0 warten, 1 XR laeuft, 2 Kopf an, 3 fertig
+    private float autoDeadline, nextAutoProbe;
+    private static float lastLoadingAt = -100f;
 
+    // 1.16.0: ohne feste Pausen (vorher 1 s Takt + 1 + 2 + 2 s = bis ~6 s nach dem
+    // Levelstart, Nutzer: "gefuehlt 5 s"). XR startet schon, sobald ein
+    // Ladezustand laeuft (Headset beim Laden kurz schwarz), sonst sobald ein
+    // Spielercharakter da ist; Kopf, sobald HMD getrackt UND Spielerkamera da,
+    // je Frame geprueft; Pistole im Frame danach.
     private void TickAutoStart()
     {
         if (autoStep >= 3 || !prefAutoStart.Value) return;
@@ -121,38 +128,35 @@ public sealed partial class XRStart
             {
                 case 0:
                     if (started) { autoStep = 3; return; }   // von Hand gestartet
-                    if (now < nextAutoProbe) return;
-                    nextAutoProbe = now + 1f;
-                    if (autoAt <= 0f)
+                    bool loading = now - lastLoadingAt < 1f;
+                    if (!loading)
                     {
+                        if (now < nextAutoProbe) return;
+                        nextAutoProbe = now + 0.1f;
                         if (UnityEngine.Object.FindObjectOfType<PlayerCameraController>() == null || Camera.main == null) return;
-                        autoAt = now + 1f;
-                        LoggerInstance.Msg("AUTOSTART: Spielercharakter da - XR in 1 s");
-                        return;
                     }
-                    if (now < autoAt) return;
-                    LoggerInstance.Msg("AUTOSTART: F8");
+                    LoggerInstance.Msg($"AUTOSTART: F8 ({(loading ? "Level laedt" : "Spielercharakter da")})");
                     Start();
                     if (!started) { LoggerInstance.Warning("AUTOSTART: XR nicht gestartet - Rest abgebrochen, F8 von Hand"); autoStep = 3; return; }
                     autoStep = 1;
-                    autoAt = now + 2f;
                     autoDeadline = now + 20f;
                     return;
                 case 1:
                     if (!started) { autoStep = 3; return; }
-                    if (now < autoAt) return;
                     if (!ReadHmdRotation().HasValue)
                     {
                         if (now > autoDeadline) { LoggerInstance.Warning("AUTOSTART: HMD nach 20 s nicht getrackt - F7/F5 von Hand"); autoStep = 3; }
                         return;
                     }
+                    autoDeadline = now + 20f;   // HMD da - ab jetzt wird nur noch auf die Spielerkamera gewartet
+                    if (Camera.main == null || now < nextAutoProbe) return;
+                    nextAutoProbe = now + 0.1f;
+                    if (UnityEngine.Object.FindObjectOfType<PlayerCameraController>() == null) return;
                     StartHead("AUTOSTART F7");
                     autoStep = 2;
-                    autoAt = now + 2f;
                     return;
                 case 2:
                     if (!started) { autoStep = 3; return; }
-                    if (now < autoAt) return;
                     if (!writeGun) { LoggerInstance.Msg("AUTOSTART: F5"); ToggleGun(); }
                     autoStep = 3;
                     return;
@@ -173,7 +177,8 @@ public sealed partial class XRStart
     private static int loadingUpdates;
 
     private static void LoadingUpdatePostfix(LoadingStateBase __instance) => NoteLoading(__instance);
-    private static void LoadingLocationUpdatePostfix(LoadingLocationState __instance) => NoteLoading(__instance);
+    // Nur das Laden eines LEVELS startet XR vorab (AutoStart) - nicht der Weg ins Hauptmenue.
+    private static void LoadingLocationUpdatePostfix(LoadingLocationState __instance) { lastLoadingAt = Time.unscaledTime; NoteLoading(__instance); }
 
     private static void NoteLoading(LoadingStateBase s)
     {
