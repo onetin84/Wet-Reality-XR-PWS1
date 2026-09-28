@@ -379,8 +379,52 @@ $zip = "$staging.zip"
 if (-not $SkipZip) {
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 
-    Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zip -CompressionLevel Optimal
+    # ZipArchive, NOT Compress-Archive. Under Windows PowerShell 5.1,
+    # Compress-Archive writes entry names with a BACKSLASH (mod\WetReality...dll).
+    # The ZIP spec requires '/', and 7-Zip, macOS and several extractors then
+    # unpack a flat folder of files literally named "mod\...". The 1.34.0 tester
+    # ZIP had to be built by hand for exactly that reason.
+    #
+    # One entry per file, named relative to the staging folder with '/', no top
+    # folder - the layout Compress-Archive produced and the hand-built ZIP kept.
+    #
+    # Verified on the raw central directory (tools/zip_raw_names.py), not with
+    # Python's zipfile: on Windows that one turns '\' into '/' while reading and
+    # reports the broken 1.34.0 ZIP as clean (10 of 15 entries had '\').
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $stream = [System.IO.File]::Open($zip, [System.IO.FileMode]::CreateNew)
+
+    try {
+        $archive = New-Object System.IO.Compression.ZipArchive($stream,
+            [System.IO.Compression.ZipArchiveMode]::Create)
+
+        try {
+            foreach ($file in @(Get-ChildItem -LiteralPath $staging -Recurse -File)) {
+                $relative = $file.FullName.Substring($staging.Length + 1).Replace('\', '/')
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,
+                    $file.FullName, $relative,[System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { $stream.Dispose() }
+
+    # Read back rather than trusted: every entry name, no backslash anywhere.
+    $check = [System.IO.Compression.ZipFile]::OpenRead($zip)
+
+    try {
+        $names = @($check.Entries | ForEach-Object { $_.FullName })
+    }
+    finally { $check.Dispose() }
+
+    $bad = @($names | Where-Object { $_ -match '\\' })
+
+    if ($bad.Count -gt 0) { throw "ZIP entries with a backslash: $($bad -join ', ')" }
+
     Step 'zipped'
+    Note "$($names.Count) entries, all with '/'"
 }
 
 # ------------------------------------------------------------------- 7. report
