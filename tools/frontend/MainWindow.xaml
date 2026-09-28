@@ -556,21 +556,10 @@
                                     </ComboBox>
                                 </Grid>
 
-                                <!-- PWS1: what the monitor shows (DesktopMirror). -->
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                               Text="Monitor view" />
-                                    <ComboBox x:Name="MirrorBox" Grid.Column="1">
-                                        <ComboBoxItem Content="Left eye" />
-                                        <ComboBoxItem Content="Right eye" />
-                                        <ComboBoxItem Content="Both eyes" />
-                                        <ComboBoxItem Content="Off" />
-                                    </ComboBox>
-                                </Grid>
+                                <!-- PWS1: DesktopMirror nur noch ein/aus (Nutzer 28.09.);
+                                     ein = left, oder der Wert right/both aus der cfg. -->
+                                <CheckBox x:Name="MirrorCheck" Margin="0,0,0,10"
+                                          Content="Show headset view on the monitor" />
 
                                 <!-- HIER STANDEN DREI HAEKCHEN - Abschnitt 171.
                                      Nebel, Lichtstreuung und Grasklingen waren
@@ -701,22 +690,8 @@
                                     <TextBlock x:Name="VignetteStrengthValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
-                                <!-- XRStart 1.24.x: LoadingBlackout, MenuHoldSeconds (Immersion). -->
-                                <CheckBox x:Name="LoadingBlackoutCheck" Margin="0,8,0,8"
-                                          Content="Black out while a level loads" />
-                                <Grid Margin="0,0,0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="106" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" MinWidth="42" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                               Text="Immersion hold" />
-                                    <Slider x:Name="MenuHoldSlider" Grid.Column="1"
-                                            Minimum="0.3" Maximum="1.5" />
-                                    <TextBlock x:Name="MenuHoldValue" Grid.Column="2"
-                                               Style="{StaticResource ValueLabel}" />
-                                </Grid>
+                                <!-- LoadingBlackout und MenuHoldSeconds sind keine Spieleroptionen
+                                     mehr (Nutzer 28.09.): die Mod nimmt ihre Vorgaben. -->
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,6,0,0"
                                            Text="Teleport: left stick forward teleports from the left hand; walking is off. Hold the menu button to hide the game UI (immersion); a short press opens the pause menu." />

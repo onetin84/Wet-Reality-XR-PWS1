@@ -620,8 +620,8 @@ function Load-Settings {
     (Ctl 'GesturesCheck').IsChecked = (Read-CfgValue -Key 'GestureZones' -Fallback 'true') -eq 'true'
     (Ctl 'HandHitCheck').IsChecked = (Read-CfgValue -Key 'HandHit' -Fallback 'true') -eq 'true'
     (Ctl 'OrangeHandsCheck').IsChecked = (Read-CfgValue -Key 'OrangeHands' -Fallback 'true') -eq 'true'
-    (Ctl 'LoadingBlackoutCheck').IsChecked = (Read-CfgValue -Key 'LoadingBlackout' -Fallback 'true') -eq 'true'
-    (Ctl 'MenuHoldSlider').Value = [double](Read-CfgValue -Key 'MenuHoldSeconds' -Fallback '0.6')
+    # LoadingBlackout and MenuHoldSeconds are not player options any more
+    # (user 28.09.): not read and never written - the mod uses its defaults.
     # Grip.cs (XRStart 1.32.0), PWS2 keys; 0 = the washer exactly on the controller.
     (Ctl 'GripXSlider').Value = [double](Read-CfgValue -Key 'GripOffsetX' -Fallback '0')
     (Ctl 'GripYSlider').Value = [double](Read-CfgValue -Key 'GripOffsetY' -Fallback '0')
@@ -641,10 +641,12 @@ function Load-Settings {
     if ($colourIndex -lt 0) { $colourIndex = 2 }
     (Ctl 'PointerColorBox').SelectedIndex = $colourIndex
 
-    $mirror = (Read-CfgValue -Key 'DesktopMirror' -Fallback 'left').ToLowerInvariant()
-    $mirrorIndex = [Array]::IndexOf($script:MirrorModes, $mirror)
-    if ($mirrorIndex -lt 0) { $mirrorIndex = 0 }
-    (Ctl 'MirrorBox').SelectedIndex = $mirrorIndex
+    # Monitor view is on/off only (user 28.09.). On keeps a right/both from the
+    # cfg; anything unknown is the mod's default, left.
+    $mirror = (Read-CfgValue -Key 'DesktopMirror' -Fallback 'left').Trim('"').ToLowerInvariant()
+    if ([Array]::IndexOf($script:MirrorModes, $mirror) -lt 0) { $mirror = 'left' }
+    $script:MirrorOn = if ($mirror -eq 'off') { 'left' } else { $mirror }
+    (Ctl 'MirrorCheck').IsChecked = $mirror -ne 'off'
 
     Sync-ComfortPreset
     $script:Loading = $false
@@ -659,8 +661,6 @@ function Update-Labels {
     (Ctl 'UiDistanceValue').Text = "$((Format-Float ([Math]::Round((Ctl 'UiDistanceSlider').Value, 1)))) m"
     (Ctl 'ReachValue').Text = "$((Format-Float ([Math]::Round((Ctl 'ReachSlider').Value, 1)))) m"
     (Ctl 'MarkerSizeValue').Text = "$([int]((Ctl 'MarkerSizeSlider').Value * 100)) cm"
-
-    (Ctl 'MenuHoldValue').Text = "$((Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1)))) s"
 
     $deg = [char]0x00B0
     (Ctl 'GripXValue').Text = "$([int][Math]::Round((Ctl 'GripXSlider').Value * 100)) cm"
@@ -731,7 +731,7 @@ function Mark-Dirty {
 
 foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider', 'UiScaleSlider',
                     'UiDistanceSlider', 'ReachSlider', 'MarkerSizeSlider',
-                    'SnapAngleSlider', 'VignetteStrengthSlider', 'MenuHoldSlider',
+                    'SnapAngleSlider', 'VignetteStrengthSlider',
                     'GripXSlider', 'GripYSlider', 'GripZSlider',
                     'RotPitchSlider', 'RotYawSlider', 'RotRollSlider')) {
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
@@ -743,8 +743,8 @@ foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
 }
 
 foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
-                    'GesturesCheck', 'HandHitCheck', 'LoadingBlackoutCheck', 'OrangeHandsCheck',
-                    'LaserCheck')) {
+                    'GesturesCheck', 'HandHitCheck', 'OrangeHandsCheck',
+                    'LaserCheck', 'MirrorCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
@@ -767,7 +767,6 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
 (Ctl 'GripResetButton').Add_Click({
     foreach ($n in @('GripXSlider', 'GripYSlider', 'GripZSlider', 'RotPitchSlider', 'RotYawSlider', 'RotRollSlider')) { (Ctl $n).Value = 0 }
 })
-(Ctl 'MirrorBox').Add_SelectionChanged({ Mark-Dirty })
 
 (Ctl 'BrowseButton').Add_Click({
     Add-Type -AssemblyName System.Windows.Forms
@@ -841,11 +840,9 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
             'RotationOffsetPitch' = Format-Float ([Math]::Round((Ctl 'RotPitchSlider').Value))
             'RotationOffsetYaw'  = Format-Float ([Math]::Round((Ctl 'RotYawSlider').Value))
             'RotationOffsetRoll' = Format-Float ([Math]::Round((Ctl 'RotRollSlider').Value))
-            'LoadingBlackout'    = Format-Bool ([bool](Ctl 'LoadingBlackoutCheck').IsChecked)
-            'MenuHoldSeconds'    = Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1))
             # As names in quotes, the way MelonPreferences keeps a string entry.
             'PointerColor'       = "`"$($script:PointerColors[[Math]::Max(0, (Ctl 'PointerColorBox').SelectedIndex)])`""
-            'DesktopMirror'      = "`"$($script:MirrorModes[[Math]::Max(0, (Ctl 'MirrorBox').SelectedIndex)])`""
+            'DesktopMirror'      = "`"$(if ([bool](Ctl 'MirrorCheck').IsChecked) { $script:MirrorOn } else { 'off' })`""
         }
 
         # @() around the result: an empty PowerShell return collapses to $null

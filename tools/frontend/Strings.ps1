@@ -125,6 +125,7 @@ $script:German = @{
     # ------------------------------------------------------------- PWS1 port
     'Pickup reach' = 'Greifreichweite'
     'Monitor view' = 'Monitorbild'
+    'Show headset view on the monitor' = 'Headsetbild auf dem Monitor zeigen'
     'Left eye' = 'Linkes Auge'
     'Right eye' = 'Rechtes Auge'
     'Both eyes' = 'Beide Augen'
