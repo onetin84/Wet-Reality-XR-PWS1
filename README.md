@@ -49,6 +49,11 @@ Controls in detail: [Quick Guide](tools/frontend/QuickGuide.html) ·
 The first start after installing MelonLoader takes a while with no sign of progress —
 it generates its support files once.
 
+**Graphics settings for VR:** in the game's options switch VSync off and set the frame
+rate limit above your headset's refresh rate (or unlimited) — otherwise the picture
+judders. Flat-screen effects such as motion blur, depth of field, chromatic aberration
+and film grain are best off wherever the game offers them.
+
 To uninstall, delete `Mods\WetReality.XRStart.dll` (and MelonLoader, if you no longer
 need it).
 

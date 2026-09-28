@@ -65,6 +65,18 @@ SPIELEN
   Beenden über das Menü des Spiels.
 
 
+GRAFIKEINSTELLUNGEN FÜR VR
+
+  Einmal in den Grafikoptionen des Spiels einstellen:
+
+  - VSync AUS und die Bildratenbegrenzung ÜBER der Bildrate des Headsets (oder
+    unbegrenzt). Sonst ruckelt das Bild.
+
+  - Effekte für den flachen Bildschirm wirken im Headset falsch. Wo das Spiel
+    sie anbietet, abschalten: Bewegungsunschärfe, Tiefenschärfe, chromatische
+    Aberration, Filmkorn.
+
+
 STEUERUNG UND EINSTELLUNGEN
 
   Der linke Controller bewegt dich, der rechte ist die Pistole. Linkshänder

@@ -17,8 +17,11 @@
 //                       alle 0,5 s neu aufgeloest (Unity-null nach Umbau).
 //   SetWashDirection    PWS2 Bit 1. Parameterloser Prefix, gibt false: der
 //                       Blick-Zweig der Richtung laeuft nicht.
-//   RaySpawnPoint       PWS2 Bit 128. localRotation = Identitaet: die Duese
-//                       zeigt, wohin ihr Locator zeigt, also die Pistole.
+//   RaySpawnPoint       PWS2 Bit 128. localRotation = Euler(RaySpawnPointRotation)
+//                       statt Identitaet (1.35.0): die Duese zeigt, wohin ihr
+//                       Locator zeigt, plus der Faecherwinkel des Tridents.
+//                       Bei NozzleType.Turbo zusaetzlich Kippen und Kreisen -
+//                       beides macht sonst SetWashDirection, das wir ueberspringen.
 //   Raycaster           PWS2 Bit 256. Postfix auf RaycastUpdate schreibt
 //                       Origin/Direction jedes m_nozzleRaycasters[i] - MIT
 //                       Zurueckschreiben (instances[i] = r): der Indexer gibt
@@ -103,6 +106,9 @@ public sealed partial class XRStart
             var asm = gunAsmStatic;
             if (asm == null) return;
             var sb = new System.Text.StringBuilder();
+            var settings = __instance.WasherSettings;
+            bool turbo = settings != null && settings.m_nozzleType == NozzleType.Turbo;
+            if (turbo) AdvanceTurbo(__instance, settings!);
             for (int i = 0; i < n; i++)
             {
                 var r = arr[i];
@@ -110,8 +116,8 @@ public sealed partial class XRStart
                 var anchor = r.NozzleAnchor;
                 var rs = anchor == null ? null : anchor.RaySpawnPoint;
                 if (rs == null) continue;
-                rs.localRotation = Quaternion.identity;   // PWS2 Bit 128
-                if (rs.parent != null) ClampNozzleAnchor(rs.parent);   // PWS2 Bit 65536, vor relPos
+                rs.localRotation = NozzleLocalRotation(r.RaySpawnPointRotation, turbo ? settings : null, __instance.m_turboRotation);   // PWS2 Bit 128
+                if (rs.parent != null) ClampNozzleAnchor(rs.parent, r.NozzleAnchorOffset, r.RaySpawnPointRotation);   // PWS2 Bit 65536, vor relPos
                 // Lage der Duese in der Assembly - starr, unabhaengig davon, wo
                 // die Animation die Assembly gerade hingesetzt hat.
                 var relPos = asm.InverseTransformPoint(rs.position);
@@ -126,9 +132,37 @@ public sealed partial class XRStart
                 rcWrites++;
             }
             rcNozzles = n;
+            rcTurbo = turbo ? $"Turbo {__instance.m_turboRotation:F0} Grad (Winkel {settings!.TurboAngle:F1}, {settings.TurboSpeed:F2} U/s)" : "";
             if (sb.Length > 0) rcLast = sb.ToString();
         }
         catch { }
+    }
+
+    // Nachbau von SetWashDirection + <SetWashDirection>g__ApplyTurboRotation
+    // (disassembliert 1.35.0, tools/disasm_SetWashDirection.txt,
+    // disasm_ApplyTurboRotation.txt). Das Spiel setzt je Duese
+    //   rs.rotation = Zielrichtung * Euler(RaySpawnPointRotation)
+    // und bei NozzleType.Turbo danach
+    //   m_turboRotation = Repeat(m_turboRotation + TurboSpeed * 360 * dt, 360)
+    //   rs.localRotation *= Euler(TurboAngle, 0, 0)
+    //   rs.RotateAround(rs.forward VOR dem Kippen, m_turboRotation)
+    // Die Zielrichtung ist bei uns die Pistole (Locator), also lokal
+    //   Euler(spawn) * AngleAxis(turbo, forward) * Euler(TurboAngle, 0, 0).
+    private static int turboFrame = -1;
+    private static string rcTurbo = "";
+
+    private static void AdvanceTurbo(WashEquipment w, WasherClassNozzleSettings s)
+    {
+        if (Time.frameCount == turboFrame) return;   // einmal je Frame, wie SetWashDirection
+        turboFrame = Time.frameCount;
+        w.m_turboRotation = Mathf.Repeat(w.m_turboRotation + s.TurboSpeed * 360f * Time.deltaTime, 360f);
+    }
+
+    private static Quaternion NozzleLocalRotation(Vector3 spawnRot, WasherClassNozzleSettings? turbo, float turboDeg)
+    {
+        var q = Quaternion.Euler(spawnRot);
+        if (turbo != null) q = q * Quaternion.AngleAxis(turboDeg, Vector3.forward) * Quaternion.Euler(turbo.TurboAngle, 0f, 0f);
+        return q;
     }
 
     // Aus RotationPostfix: nach UpdateRotation die Neigung des HMD statt der Maus.
@@ -156,13 +190,16 @@ public sealed partial class XRStart
     // Person traegt dieselbe Kette OHNE PositionToFOV und damit den verfassten
     // Wert. Pfad Assembly -> Anker aus der lebenden Kette, nicht aus Namen
     // (Lokator- und Klonnamen wechseln mit Duese und Verlaengerung). Kein
-    // Zwilling: nur seitlich klemmen (x, y = 0, z bleibt).
+    // Zwilling (in PWS1 bisher immer): seitlich auf den ENTWORFENEN Versatz
+    // klemmen, z bleibt. SetAnchorPoints setzt localPosition = NozzleAnchorOffset
+    // (+ Kameramodus-Zuschlag); beim Trident traegt er den seitlichen Abstand
+    // der drei Strahlen - bis 1.34.0 auf 0 geklemmt, alle drei auf einer Linie.
     private static Transform? thirdAsm;
     private static readonly Dictionary<IntPtr, Transform?> anchorTwins = new();
     private static readonly HashSet<IntPtr> anchorLogged = new();
     private static string anchorLog = "";
 
-    private static void ClampNozzleAnchor(Transform anchor)
+    private static void ClampNozzleAnchor(Transform anchor, Vector3 designed, Vector3 spawnRot)
     {
         var asm = gunAsmStatic;
         if (asm == null) return;
@@ -173,9 +210,9 @@ public sealed partial class XRStart
             twin = FindTwin(anchor, asm, out var path);
             anchorTwins[anchor.Pointer] = twin;
             if (anchorLogged.Add(anchor.Pointer))
-                anchorLog = $"Duesenanker {path}: 1. Person {lp.ToString("F3")} | 3. Person {(twin == null ? "NICHT GEFUNDEN - nur seitlich geklemmt" : twin.localPosition.ToString("F3"))}";
+                anchorLog += (anchorLog.Length > 0 ? "\n  " : "") + $"Duesenanker {path}: 1. Person {lp.ToString("F3")} | Entwurf {designed.ToString("F3")} Faecher {spawnRot.ToString("F1")} | 3. Person {(twin == null ? "NICHT GEFUNDEN - seitlich auf Entwurf geklemmt" : twin.localPosition.ToString("F3"))}";
         }
-        target = twin == null ? new Vector3(0f, 0f, lp.z) : twin.localPosition;
+        target = twin == null ? new Vector3(designed.x, designed.y, lp.z) : twin.localPosition;
         if (lp != target) anchor.localPosition = target;
     }
 
@@ -269,8 +306,9 @@ public sealed partial class XRStart
                 int n = arr == null ? 0 : Math.Min(arr.Length, Math.Max(fixWash.m_activeNozzleCount, 1));
                 for (int i = 0; i < n; i++)
                 {
-                    var rs = arr![i]?.NozzleAnchor?.RaySpawnPoint;
-                    if (rs != null && rs.parent != null) ClampNozzleAnchor(rs.parent);
+                    var r = arr![i];
+                    var rs = r?.NozzleAnchor?.RaySpawnPoint;
+                    if (rs != null && rs.parent != null) ClampNozzleAnchor(rs.parent, r!.NozzleAnchorOffset, r.RaySpawnPointRotation);
                 }
             }
             if (anchorLog.Length > 0) { LoggerInstance.Msg("KORREKTUR: " + anchorLog); anchorLog = ""; }
@@ -297,7 +335,7 @@ public sealed partial class XRStart
     {
         var s = $"KORREKTUREN {(fixesOn ? "AN" : "AUS")}{(FixActive ? "" : " (inaktiv)")} | _LockFOV vorher {lockReadBefore:F2} ({(lockWritten ? "->0" : "Spiel")}) | " +
             $"PositionToFOV {(fixP2F == null ? "fehlt" : fixP2F.enabled ? "an" : "aus")} | SetWashDirection {swdSkipped}/{swdCalls} uebersprungen | " +
-            $"RaycastUpdate {rcCalls}x, {rcWrites} Raycaster geschrieben ({rcNozzles} Duesen) | Pitch {pitchWrites}x zuletzt {lastPitchWritten:F1} | {rcLast}";
+            $"RaycastUpdate {rcCalls}x, {rcWrites} Raycaster geschrieben ({rcNozzles} Duesen){(rcTurbo.Length > 0 ? " " + rcTurbo : "")} | Pitch {pitchWrites}x zuletzt {lastPitchWritten:F1} | {rcLast}";
         swdCalls = swdSkipped = rcCalls = rcWrites = pitchWrites = 0;
         return s;
     }

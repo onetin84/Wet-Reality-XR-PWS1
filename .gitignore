@@ -64,6 +64,8 @@ desktop.ini
 # geloeschte Zeilen - sie tragen keine lokalen Pfade.
 Wet Reality Handbuch.md
 Wet Reality Offene Punkte.md
+# Entwicklernotizen fuer das PWS2-Projekt (mit Pseudocode aus der Disassemblierung).
+PWS2-Notiz *.md
 
 # Gesicherte Spiellogs - MelonLoader rotiert nach Namen, darum werden sie
 # lokal gesichert. Sie gehoeren nicht ins Repo (11 MB und schnell mehr).

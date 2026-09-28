@@ -28,6 +28,10 @@
 //     aller Referenz-Instanzen (<object>) - der Patch gilt fuer alle Shops.
 //     Die von 1.6.1-1.6.3 gespeicherten 5000 rechnet RecalculateStars einmal
 //     auf den echten Wert zurueck.
+//   Ausruestung (1.35.0): ShopContent.AreDependenciesMet wird true. Es prueft
+//     die Karriere-Auftraege samt Sternen (m_jobDependencies, disassembliert);
+//     der Prime Vista Trident steht auf der Waehlscheibe, sobald es true ist
+//     (CampaignSaveData.ShouldTridentShowOnRadialWheel). Nur zur Laufzeit.
 //   Jobs: Status "Locked" wird beim Lesen zu "Unlocked" (Postfixe auf
 //     CampaignSaveData.Get*Status, IsFreePlayUnlocked). Nur zur Laufzeit; ins
 //     Spiel geht erst, was man tatsaechlich spielt. Ob die Postfixe feuern,
@@ -134,6 +138,7 @@ public sealed partial class XRStart
                 PatchPostfix(typeof(CampaignSaveData), m, nameof(JobStatusPostfix));
             PatchPostfix(typeof(CampaignSaveData), "IsFreePlayUnlocked", nameof(FreePlayUnlockedPostfix));
             PatchPostfix(typeof(GridElementShopBase<PowerWasherData>), "StarsRemaining", nameof(StarsRemainingPostfix));
+            PatchPostfix(typeof(ShopContent), "AreDependenciesMet", nameof(DependenciesMetPostfix));
         }
     }
 
@@ -286,6 +291,16 @@ public sealed partial class XRStart
         starsRemainingZeroed++;
     }
 
+    private static int depsCalls, depsForced;
+
+    private static void DependenciesMetPostfix(ref bool __result)
+    {
+        depsCalls++;
+        if (!cheatsOn || __result) return;
+        __result = true;
+        depsForced++;
+    }
+
     private static void JobStatusPostfix(ref GameJobStatus __result)
     {
         statusCalls++;
@@ -341,11 +356,11 @@ public sealed partial class XRStart
             LoggerInstance.Warning("CHEAT: Guthaben - " + e.GetType().Name + ": " + e.Message);
             saveManager = null;
         }
-        if (statusCalls + freePlayCalls + starsRemainingCalls != statusCallsLogged && now >= nextCheatLog)
+        if (statusCalls + freePlayCalls + starsRemainingCalls + depsCalls != statusCallsLogged && now >= nextCheatLog)
         {
             nextCheatLog = now + 10f;
-            statusCallsLogged = statusCalls + freePlayCalls + starsRemainingCalls;
-            LoggerInstance.Msg($"CHEAT: Job-Status {statusCalls} Aufrufe, {statusUnlocked} Locked->Unlocked | IsFreePlayUnlocked {freePlayCalls} Aufrufe, {freePlayUnlocked} false->true | StarsRemaining {starsRemainingCalls} Aufrufe, {starsRemainingZeroed} auf 0");
+            statusCallsLogged = statusCalls + freePlayCalls + starsRemainingCalls + depsCalls;
+            LoggerInstance.Msg($"CHEAT: Job-Status {statusCalls} Aufrufe, {statusUnlocked} Locked->Unlocked | IsFreePlayUnlocked {freePlayCalls} Aufrufe, {freePlayUnlocked} false->true | StarsRemaining {starsRemainingCalls} Aufrufe, {starsRemainingZeroed} auf 0 | AreDependenciesMet {depsCalls} Aufrufe, {depsForced} false->true");
         }
     }
 }

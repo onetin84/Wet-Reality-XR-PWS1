@@ -47,6 +47,12 @@ Steuerung im Detail: [Kurzanleitung](tools/frontend/QuickGuide-de.html) ·
 Der erste Start nach der Installation von MelonLoader dauert eine Weile ohne sichtbaren
 Fortschritt — er erzeugt einmalig seine Hilfsdateien.
 
+**Grafikeinstellungen für VR:** In den Optionen des Spiels VSync ausschalten und die
+Bildratenbegrenzung über die Bildrate des Headsets setzen (oder unbegrenzt) — sonst
+ruckelt das Bild. Effekte für den flachen Bildschirm wie Bewegungsunschärfe,
+Tiefenschärfe, chromatische Aberration und Filmkorn möglichst abschalten, wo das Spiel
+sie anbietet.
+
 Deinstallieren: `Mods\WetReality.XRStart.dll` löschen (und MelonLoader, wenn du ihn
 nicht mehr brauchst).
 

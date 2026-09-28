@@ -65,6 +65,18 @@ PLAY
   To quit, use the game's own menu.
 
 
+GRAPHICS SETTINGS FOR VR
+
+  Set these once in the game's own graphics options:
+
+  - VSync OFF, and the frame rate limit ABOVE your headset's refresh rate (or
+    unlimited). Otherwise the picture judders.
+
+  - Effects made for a flat screen feel wrong in a headset. Wherever the game
+    offers them, switch them off: motion blur, depth of field, chromatic
+    aberration, film grain.
+
+
 CONTROLS AND SETTINGS
 
   The left controller moves you, the right controller is the washer. Left-handed
