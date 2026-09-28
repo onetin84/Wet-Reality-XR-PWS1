@@ -168,6 +168,7 @@
 // 1.31.0: Y im Menue = Zurueck (Popup schliessen / Tablet zurueck / Tablet zu; MenuBack.cs), A im Komfortmodus aus.
 // 1.32.0: Ziellaser (WashLaser.cs, aus), Griff-Feintuning der Pistole (Grip.cs, PWS2-Schluessel).
 // 1.33.0: Linkshaender-Modus (Hand, Rollen statt Seiten; Handedness.cs), Live-Griff-Kalibrierung Griff+X+Y (Grip.cs).
+// 1.34.0: Spielerbuild - DevMode deckelt Diagnosezeilen, Messpfade und DevCheats, DevHotkeys alle F-Tasten (DevTools.cs).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -185,7 +186,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.33.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.34.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -254,7 +255,7 @@ public sealed partial class XRStart : MelonMod
 
     public override void OnInitializeMelon()
     {
-        LoggerInstance.Msg("bereit - F8 startet den OpenXR-Loader des Spiels, F8 erneut stoppt ihn, F7 = Kopf schreiben an/aus (nur mit XR), F6 = Schreibpunkt LateUpdate/Render, F5 = Pistole schreiben an/aus (nur mit XR), F4 = PWS2-Korrekturen an/aus, F3 = Controller-Steuerung an/aus, F9 = 20 s Kopfmessung, F1 = Spiegel gameViewRenderMode, F2 = Himmel off/solid/skybox, F10 = UI im Headset an/aus");
+        LoggerInstance.Msg("bereit - Entwicklungstasten nennt die Zeile nach TESTUMGEBUNG (DevMode/DevHotkeys)");
         CountSetOutput();   // setzt den Offset; Meldungen vor dem Laden zaehlen nicht
         lastFrame = Time.frameCount;
         HookDeviceChanges();
@@ -443,7 +444,7 @@ public sealed partial class XRStart : MelonMod
     // LateUpdate zu alt ist. Geschrieben wird hier nur mit F6 = Render.
     private void BeforeRender()
     {
-        if (writeHead) MeasurePoseGap();
+        if (writeHead && dev) MeasurePoseGap();
         if (writeHead && writeAtRender) DriveHead();
         if (writeHead) DriveOffHandPointer();   // X zielt mit der linken Hand (Pointer.cs)
         DriveMenuCamera();                      // Hauptmenue: eigene Kamera folgt dem HMD (MenuCamera.cs)
@@ -549,6 +550,7 @@ public sealed partial class XRStart : MelonMod
     // wird der Druck gemeldet statt still verworfen.
     private bool KeyPressed(int vk, ref bool wasDown, string name)
     {
+        if (!devKeys) return false;   // alle F-Tasten sind Entwicklungstasten (DevTools.cs)
         short st = GetAsyncKeyState(vk);
         bool down = (st & 0x8000) != 0;
         bool edge = (down && !wasDown) || (!down && (st & 0x0001) != 0);
@@ -579,7 +581,7 @@ public sealed partial class XRStart : MelonMod
         if (lookAdoptLog.Length > 0) { LoggerInstance.Msg(lookAdoptLog); lookAdoptLog = ""; }   // aus LookPostfix (statisch)
         TickSky();
         TickSkyCube();   // Himmel: eine Wuerfelseite je Frame (SkyCube.cs)
-        if (started && Time.unscaledTime >= nextInputLog)
+        if (dev && started && Time.unscaledTime >= nextInputLog)
         {
             nextInputLog = Time.unscaledTime + 1f;
             LoggerInstance.Msg(InputStatus());
@@ -666,8 +668,11 @@ public sealed partial class XRStart : MelonMod
         // zeigt mit R, ob es bis zum Rendern haelt.
         if (writeHead)
         {
-            var r = ReadHmdRotation();
-            if (r.HasValue) { lateRot = r.Value; lateRotFrame = Time.frameCount; }
+            if (dev)   // nur fuer die KOPF-TAKT-Messung
+            {
+                var r = ReadHmdRotation();
+                if (r.HasValue) { lateRot = r.Value; lateRotFrame = Time.frameCount; }
+            }
             if (!writeAtRender) DriveHead();
         }
         if (sampleOpen && Time.frameCount == sampleFrame)
@@ -688,7 +693,7 @@ public sealed partial class XRStart : MelonMod
             var hmd = InputSystem.GetDevice<XRHMD>();
             if (hmd == null || !hmd.isTracked.isPressed)
             {
-                if (now >= nextHeadLog)
+                if (dev && now >= nextHeadLog)
                 {
                     nextHeadLog = now + 1f;
                     LoggerInstance.Msg($"KOPF-SCHREIBEN f={Time.frameCount}: HMD {(hmd == null ? "fehlt" : "nicht getrackt")} - Frame ausgelassen");
@@ -729,7 +734,7 @@ public sealed partial class XRStart : MelonMod
             headPitchPub = Mathf.DeltaAngle(0f, headCam.localEulerAngles.x);
             headPitchPublished = true;
 
-            if (now >= nextHeadLog)
+            if (dev && now >= nextHeadLog)
             {
                 nextHeadLog = now + 1f;
                 // Spiel vorher = bodyYaw + hmdYaw des Vorframes + Maus: das
@@ -770,7 +775,7 @@ public sealed partial class XRStart : MelonMod
         var v = ctl == null ? null : ctl.m_verticalLook;
         if (ctl == null || h == null || v == null)
         {
-            LoggerInstance.Msg($"KOPF-SCHREIBEN: kein Kopf (Controller {(ctl == null ? "fehlt" : "ohne Knoten")}) - warte");
+            Diag($"KOPF-SCHREIBEN: kein Kopf (Controller {(ctl == null ? "fehlt" : "ohne Knoten")}) - warte");
             return false;
         }
         headCtl = ctl;
@@ -912,7 +917,7 @@ public sealed partial class XRStart : MelonMod
         started = true;
         startTime = Time.unscaledTime;
         Report("direkt nach dem Start");
-        reportUntil = Time.unscaledTime + ReportSeconds;
+        reportUntil = dev ? Time.unscaledTime + ReportSeconds : 0f;   // der 30-s-Bericht ist Messung
         nextReport = nextXrUpdate = Time.unscaledTime + 1f;
     }
 

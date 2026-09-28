@@ -159,9 +159,9 @@ public sealed partial class XRStart
             lastCanvasSignature = signature;
             TouchUiDepth(signature);   // Menue auf: neue Graphics (VrUi.cs)
 
-            LoggerInstance.Msg($"CANVAS: {roots.Count} aktive Wurzel-Canvases, XR {(started ? "an" : "aus")}, Szene '{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}'");
-            foreach (var c in roots) LoggerInstance.Msg("  " + DescribeCanvas(c));
-            ReportCameras("CANVAS-Wechsel");
+            Diag($"CANVAS: {roots.Count} aktive Wurzel-Canvases, XR {(started ? "an" : "aus")}, Szene '{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}'");
+            if (dev) foreach (var c in roots) Diag("  " + DescribeCanvas(c));
+            if (dev) ReportCameras("CANVAS-Wechsel");   // alle Kameras der Szene - Messung
         }
         catch (Exception e)
         {

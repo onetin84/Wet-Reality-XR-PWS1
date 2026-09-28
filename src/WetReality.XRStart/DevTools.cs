@@ -57,9 +57,25 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<bool> prefSprayHaptics = null!;
     private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
 
+    // DER DECKEL (1.34.0, Nutzer 28.09.: die Spielerversion ohne alles
+    // Entwicklungsmaessige; PWS2 DevMode/DevHotkeys). GEDECKELT, NICHT
+    // UEBERSCHRIEBEN: MelonLoader schreibt die cfg beim Beenden zurueck - die
+    // Einzelschalter (DevCheats) bleiben stehen und wirken nur mit DevMode.
+    // Beim Start gelesen, statisch fuer die Patches.
+    private MelonPreferences_Entry<bool> prefDevMode = null!, prefDevHotkeys = null!;
+    internal static bool dev, devKeys;
+
+    // Diagnosezeile: nur mit DevMode. Einmalige Zeilen (Patch, gebunden) und
+    // Warnungen laufen weiter ueber LoggerInstance.
+    private void Diag(string msg) { if (dev) LoggerInstance.Msg(msg); }
+
     private void InitDevTools()
     {
         var cat = MelonPreferences.CreateCategory("WetReality_XRStart");
+        prefDevMode = cat.CreateEntry("DevMode", false, description: "Hauptschalter fuer alles, was nur der Entwicklung dient: Diagnose-Logzeilen und Messpfade, Entwicklungstasten (DevHotkeys), Cheats (DevCheats). Aus = diese Schalter wirken nicht, egal wie sie stehen. Das MelonLoader-Konsolenfenster ist getrennt: hide_console unter [console] in UserData/Loader.cfg.");
+        prefDevHotkeys = cat.CreateEntry("DevHotkeys", false, description: "Entwicklungstasten F1-F11 (F8 XR, F7 Kopf, F5 Pistole, F3 Steuerung, F4 Korrekturen, F6 Schreibpunkt, F9 Messung, F1 Spiegel, F2 Himmel, F10 UI, F11 Menue-Ziel). Nur mit DevMode.");
+        dev = prefDevMode.Value;
+        devKeys = dev && prefDevHotkeys.Value;
         prefAutoStart = cat.CreateEntry("AutoStart", true, description: "F8/F7/F5 automatisch, sobald ein Level geladen ist");
         prefSkipContinue = cat.CreateEntry("SkipLoadingContinue", true, description: "Ladebildschirm (Steuerungshilfe) automatisch mit Weiter bestaetigen");
         // AUS in der Auslieferung (Nutzer 28.09.). Die Entwicklungs-cfg behaelt ihr
@@ -103,8 +119,11 @@ public sealed partial class XRStart
         prefTeleportSlopeWalk = cat.CreateEntry("TeleportSlopeWalk", true, description: "Treppe/Rampe als Weg (PWS2 Abschnitt 159): liegt das Ziel ueber der Kantengrenze, wird der Boden vom Fuss dorthin in 0,18-m-Schritten abgegangen; jede Stufe <= 0,45 m hoch ist ein Weg.");
         prefLadderTeleport = cat.CreateEntry("LadderTeleport", true, description: "Auf eine aufgestellte Leiter gezielt = oben ankommen statt an der Sprosse (PWS2); die eine Ausnahme von der Hoehengrenze.");
         prefLadderTopOffset = cat.CreateEntry("LadderTopOffset", 0.35f, description: "Meter weg von der Leiter oben, damit man auf dem Dach steht und nicht an der Sprosse haengt.");
-        LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} TeleportSlopeWalk={prefTeleportSlopeWalk.Value} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2} TurnSpeed={prefTurnSpeed.Value:F0} SprayHaptics={prefSprayHaptics.Value} HapticIntensity={prefHapticIntensity.Value:F2} UiScale={prefUiScale.Value:F4} UiDistance={prefUiDistance.Value:F2}");
-        cheatsOn = prefCheats.Value;
+        LoggerInstance.Msg($"TESTUMGEBUNG: DevMode={dev} DevHotkeys={prefDevHotkeys.Value} (wirksam {devKeys}) AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} TeleportSlopeWalk={prefTeleportSlopeWalk.Value} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2} TurnSpeed={prefTurnSpeed.Value:F0} SprayHaptics={prefSprayHaptics.Value} HapticIntensity={prefHapticIntensity.Value:F2} UiScale={prefUiScale.Value:F4} UiDistance={prefUiDistance.Value:F2}");
+        LoggerInstance.Msg(devKeys
+            ? "Entwicklungstasten AN: F8 XR an/aus, F7 Kopf schreiben, F6 Schreibpunkt LateUpdate/Render, F5 Pistole schreiben, F4 PWS2-Korrekturen, F3 Controller-Steuerung, F9 20 s Kopfmessung, F1 Spiegel gameViewRenderMode, F2 Himmel, F10 UI im Headset, F11 Menue-Ziel"
+            : "Entwicklungstasten AUS (DevMode/DevHotkeys) - F1-F11 ohne Wirkung");
+        cheatsOn = dev && prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;
 
         PatchPostfix(typeof(LoadingStateBase), "Update", nameof(LoadingUpdatePostfix));

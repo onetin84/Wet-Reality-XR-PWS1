@@ -92,7 +92,7 @@ public sealed partial class XRStart
                 LoggerInstance.Msg($"STARTLOGO: {splashTexture!.width}x{splashTexture.height}, {prefSplashWidth.Value * keep:F2} m breit (je Seite {crop:P0} beschnitten) in {prefSplashDistance.Value:F2} m, Kamera '{cam.name}', {hold:F2} s + {fade:F2} s");
             }
             // Erst beim Ausblenden messen: dann ist UIRoot sicher auf die VR-Kamera umgestellt.
-            if (!splashMeasured && elapsed >= hold) { splashMeasured = true; MeasureSplashFrame(cam, prefSplashWidth.Value * keep, prefSplashWidth.Value / splashAspect, prefSplashDistance.Value); }
+            if (dev && !splashMeasured && elapsed >= hold) { splashMeasured = true; MeasureSplashFrame(cam, prefSplashWidth.Value * keep, prefSplashWidth.Value / splashAspect, prefSplashDistance.Value); }
         }
         catch (Exception e) { LoggerInstance.Warning("STARTLOGO: " + e.GetType().Name + ": " + e.Message); splashHolder = null; }
     }

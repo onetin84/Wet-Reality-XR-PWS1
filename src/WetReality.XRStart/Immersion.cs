@@ -95,7 +95,7 @@ public sealed partial class XRStart
             immersionGroup.alpha = want ? 0f : 1f;
             immersionGroup.blocksRaycasts = !want;
             uiHidden = want;
-            LoggerInstance.Msg($"IMMERSION: Spiel-UI {(want ? "AUS" : "wieder sichtbar")} (Modus {(immersion ? "an" : "aus")}, Menue {(menuActive ? "offen" : "zu")}, Scheibe {(wheelOpen ? "offen" : "zu")})");
+            Diag($"IMMERSION: Spiel-UI {(want ? "AUS" : "wieder sichtbar")} (Modus {(immersion ? "an" : "aus")}, Menue {(menuActive ? "offen" : "zu")}, Scheibe {(wheelOpen ? "offen" : "zu")})");
         }
         catch (Exception e) { LoggerInstance.Warning("IMMERSION: " + e.GetType().Name + ": " + e.Message); immersionGroup = null; uiHidden = false; }
     }

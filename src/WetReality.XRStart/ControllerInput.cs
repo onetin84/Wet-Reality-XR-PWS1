@@ -131,7 +131,7 @@ public sealed partial class XRStart
             if (sprint) { __instance.Sprint = true; weSprint = true; sprintFrames++; }
             else if (weSprint) { __instance.Sprint = false; weSprint = false; }
 
-            inputLast = $"trigger {(trig == null ? "fehlt" : trig.ReadValue().ToString("F2"))} linker Stick {(ls == null ? "fehlt" : mv.ToString("F2"))} | " +
+            if (dev) inputLast = $"trigger {(trig == null ? "fehlt" : trig.ReadValue().ToString("F2"))} linker Stick {(ls == null ? "fehlt" : mv.ToString("F2"))} | " +
                 $"Spiel liest Fire={__instance.Fire} MovementRaw={__instance.MovementRaw.ToString("F2")} Sprint={__instance.Sprint}";
         }
         catch { }
@@ -248,7 +248,7 @@ public sealed partial class XRStart
     {
         try
         {
-            ProbeButtons(r, l);
+            if (dev) ProbeButtons(r, l);
             Inventory(r, "rechts", "trigger", "thumbstick", "primaryButton", "secondaryButton", "gripPressed", "thumbstickClicked");
             Inventory(l, "links", "thumbstick", "triggerPressed", "primaryButton", "thumbstickClicked", "menu");
             DriveWheelAndY(pi, r, l);   // R3 Waehlscheibe, Y Inventar/Washer (Wheel.cs)
@@ -322,7 +322,7 @@ public sealed partial class XRStart
                     // GameEvents.PickUpInput - darauf hoert die Aufnahme -, dann
                     // BaseInput.PickupItemPressed. 1.3.0 rief nur das zweite, und
                     // nichts wurde aufgenommen.
-                    StartPickupDiag();
+                    if (dev) StartPickupDiag();
                     Il2CppPWS.GameEvents.PickUpInput?.Invoke(Il2CppPWS.PickUpInputAction.PickUp);
                     pi.PickupItemPressed?.Invoke(Il2CppPWS.PickUpInputAction.PickUp);
                     btnEvents.Add("X: GameEvents.PickUpInput + PickupItemPressed (PickUp)");
@@ -366,7 +366,7 @@ public sealed partial class XRStart
     private void FlushButtonEvents()
     {
         if (btnEvents.Count == 0) return;
-        foreach (var e in btnEvents) LoggerInstance.Msg("KNOPF " + e);
+        if (dev) foreach (var e in btnEvents) LoggerInstance.Msg("KNOPF " + e);
         btnEvents.Clear();
     }
 
@@ -395,7 +395,7 @@ public sealed partial class XRStart
     // Aus OnUpdate: den Charakter-Controller finden und das Haltungsereignis loggen.
     private void ResolveCharacter()
     {
-        if (stanceEvent.Length > 0) { LoggerInstance.Msg("STEUERUNG: " + stanceEvent); stanceEvent = ""; }
+        if (stanceEvent.Length > 0) { Diag("STEUERUNG: " + stanceEvent); stanceEvent = ""; }
         if (charCtl != null || Time.unscaledTime < nextCharResolve) return;
         nextCharResolve = Time.unscaledTime + 1f;
         var c = headCtl != null ? headCtl.m_controller : null;

@@ -354,7 +354,7 @@ public sealed partial class XRStart
             if (over && wheelChain && now - wheelOverSince >= WheelCommitSeconds && wheelPi != null)
             {
                 int i = Array.IndexOf(WheelTypes, wheelType);
-                LoggerInstance.Msg($"WAEHLSCHEIBE: {wheelType} gewaehlt per Zeiger (Richtung {v.normalized.ToString("F2")}, Winkel {Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg:F0}), Ring {wheelRingMeters:F3} m = {wheelRingUnits:F0} Einheiten, Select {wheelSelects}x");
+                Diag($"WAEHLSCHEIBE: {wheelType} gewaehlt per Zeiger (Richtung {v.normalized.ToString("F2")}, Winkel {Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg:F0}), Ring {wheelRingMeters:F3} m = {wheelRingUnits:F0} Einheiten, Select {wheelSelects}x");
                 if (i >= WheelTypes.Length - 1) CloseWheel(wheelPi, "Kette fertig");
                 else
                 {
@@ -405,7 +405,7 @@ public sealed partial class XRStart
         wheelPlaceAt = at; wheelPlaceRot = rot; wheelPlaceValid = true;
         t.SetPositionAndRotation(at, rot);   // weltfest: Mitte am Strahlpunkt, Drehung vom Oeffnen
         float now = Time.unscaledTime;
-        if (now >= nextWheelPlaceLog)
+        if (dev && now >= nextWheelPlaceLog)
         {
             nextWheelPlaceLog = now + 1f;
             LoggerInstance.Msg($"WAEHLSCHEIBE Lage: vor dem Rendern {wheelOverwritten} von {wheelPlaceChecks} Frames fremd ueberschrieben, Welt->lokal {wheelFixes} Korrekturen");
@@ -426,7 +426,7 @@ public sealed partial class XRStart
             if (rm.m_nozzleSelectionMenu != null && rm.m_nozzleSelectionMenu.IsOpen) slots = rm.m_nozzleSelectionMenu.m_slotsRoot;
             else if (rm.m_extensionSelectionMenu != null && rm.m_extensionSelectionMenu.IsOpen) slots = rm.m_extensionSelectionMenu.m_slotsRoot;
             else if (rm.m_cleaningLiquidSelectionMenu != null && rm.m_cleaningLiquidSelectionMenu.IsOpen) slots = rm.m_cleaningLiquidSelectionMenu.m_slotsRoot;
-            if (slots == null) { if (log) LoggerInstance.Msg("WAEHLSCHEIBE: keine offene Kategorie fuer den Ring - fester Radius"); return 0f; }
+            if (slots == null) { if (log) Diag("WAEHLSCHEIBE: keine offene Kategorie fuer den Ring - fester Radius"); return 0f; }
             float sum = 0f; int n = 0;
             var c0 = rm.transform.position;
             void Walk(Transform t, int depth)
@@ -442,7 +442,7 @@ public sealed partial class XRStart
             }
             Walk(slots, 1);
             float ring = n == 0 ? 0f : sum / n;
-            if (log) LoggerInstance.Msg($"WAEHLSCHEIBE: Ring beim Oeffnen {ring:F3} m aus {n} Slot-Knoten ({wheelType}) - je Frame nachgefuehrt, Maximum gilt");
+            if (log) Diag($"WAEHLSCHEIBE: Ring beim Oeffnen {ring:F3} m aus {n} Slot-Knoten ({wheelType}) - je Frame nachgefuehrt, Maximum gilt");
             if (!wheelShadersLogged) { wheelShadersLogged = true; LogWheelShaders(rm); }
             return ring;
         }
@@ -451,6 +451,7 @@ public sealed partial class XRStart
 
     private void LogWheelShaders(RadialMenu rm)
     {
+        if (!dev) return;
         try
         {
             var gs = rm.GetComponentsInChildren<UnityEngine.UI.Graphic>(false);
@@ -464,7 +465,7 @@ public sealed partial class XRStart
                 if (!seen.Add(key)) continue;
                 var props = new List<string>();
                 if (sh != null) for (int i = 0; i < sh.GetPropertyCount(); i++) props.Add(sh.GetPropertyName(i));
-                LoggerInstance.Msg($"WAEHLSCHEIBE Shader: '{g.name}' {g.GetIl2CppType().Name} Material '{(m == null ? "-" : m.name)}' Shader '{(sh == null ? "-" : sh.name)}' [{string.Join(", ", props)}]");
+                Diag($"WAEHLSCHEIBE Shader: '{g.name}' {g.GetIl2CppType().Name} Material '{(m == null ? "-" : m.name)}' Shader '{(sh == null ? "-" : sh.name)}' [{string.Join(", ", props)}]");
             }
         }
         catch (Exception e) { LoggerInstance.Warning("WAEHLSCHEIBE Shader: " + e.GetType().Name + ": " + e.Message); }
@@ -474,6 +475,7 @@ public sealed partial class XRStart
     // Weltdrehung, dazu m_offsetFeedback beim Namen.
     private void DumpWheelChildren(string when)
     {
+        if (!dev) return;
         try
         {
             var rm = radialInst;
@@ -492,7 +494,7 @@ public sealed partial class XRStart
                 }
             }
             Walk(rm.transform, 1);
-            LoggerInstance.Msg(sb.ToString());
+            Diag(sb.ToString());
         }
         catch (Exception e) { LoggerInstance.Warning("WAEHLSCHEIBE Knoten: " + e.GetType().Name); }
     }

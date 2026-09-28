@@ -101,14 +101,14 @@ public sealed partial class XRStart
             var a = mgrs[i].m_anchorPoint;
             if (a != null && IsUnder(a, camT)) gunAnchor = a;
         }
-        if (gunAnchor == null) { LoggerInstance.Msg("PISTOLE-SCHREIBEN: kein Anker unter Camera.main - warte"); return false; }
+        if (gunAnchor == null) { Diag("PISTOLE-SCHREIBEN: kein Anker unter Camera.main - warte"); return false; }
         var asms = UnityEngine.Object.FindObjectsOfType<PowerWasherAssembler>();
         for (int i = 0; i < asms.Length && gunAsm == null; i++)
         {
             var t = asms[i].transform;
             if (IsUnder(t, gunAnchor)) gunAsm = t;
         }
-        if (gunAsm == null) { LoggerInstance.Msg("PISTOLE-SCHREIBEN: keine Assembly unter dem Anker - warte"); gunAnchor = null; return false; }
+        if (gunAsm == null) { Diag("PISTOLE-SCHREIBEN: keine Assembly unter dem Anker - warte"); gunAnchor = null; return false; }
         if (gunAsm.Pointer != gunRestFor)
         {
             gunRestPos = gunAsm.localPosition;
@@ -133,7 +133,7 @@ public sealed partial class XRStart
             {
                 gunSkips++;
                 gunWroteLast = false;
-                if (now >= nextGunLog)
+                if (dev && now >= nextGunLog)
                 {
                     nextGunLog = now + 1f;
                     LoggerInstance.Msg($"PISTOLE-SCHREIBEN f={Time.frameCount}: {(ctl == null ? "kein rechter Controller" : hmd == null ? "kein HMD" : "nicht getrackt")} - Frame ausgelassen");
@@ -172,7 +172,7 @@ public sealed partial class XRStart
             pubAsmRot = gunRot;
             gunPublished = true;
 
-            if (now >= nextGunLog)
+            if (dev && now >= nextGunLog)
             {
                 nextGunLog = now + 1f;
                 LoggerInstance.Msg($"PISTOLE-SCHREIBEN f={Time.frameCount} n={gunWrites} skip={gunSkips} | Quelle {gunSource} | " +
@@ -194,7 +194,7 @@ public sealed partial class XRStart
     // Am Anfang von OnUpdate: steht noch, was die Mod im letzten Render schrieb?
     private void CheckGunReadback()
     {
-        if (!writeGun || !gunWroteLast || gunAsm == null) return;
+        if (!dev || !writeGun || !gunWroteLast || gunAsm == null) return;   // reine Messung
         try
         {
             float dp = (gunAsm.localPosition - gunWrotePos).magnitude;

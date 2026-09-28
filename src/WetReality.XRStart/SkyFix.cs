@@ -62,7 +62,7 @@ public sealed partial class XRStart
         // Die Menuekamera (Hauptmenue) hat ihren eigenen Grund - kein Himmel (1.25.0).
         if (menuCam != null && cam.Pointer == menuCam.Pointer) { RestoreSky("Menuekamera"); return; }
         if (skyCam != null && skyCam.Pointer != cam.Pointer) RestoreSky("neue Kamera");
-        if (cam.Pointer != skyMeasuredFor) { skyMeasuredFor = cam.Pointer; MeasureSky(cam); }
+        if (cam.Pointer != skyMeasuredFor) { skyMeasuredFor = cam.Pointer; if (dev) MeasureSky(cam); }   // Messung: alle Renderer der Szene
 
         try
         {

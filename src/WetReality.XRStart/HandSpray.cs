@@ -76,7 +76,7 @@ public sealed partial class XRStart
             if (hit != handHitWasHit)
             {
                 handHitWasHit = hit;
-                if (hit && ++handHitCount <= 5) LoggerInstance.Msg($"HAND-TREFFER: Strahl auf der freien Hand ({handHitCount}.)");
+                if (hit && ++handHitCount <= 5) Diag($"HAND-TREFFER: Strahl auf der freien Hand ({handHitCount}.)");
             }
         }
         catch (Exception e) { LoggerInstance.Warning("HAND-TREFFER: " + e.GetType().Name + ": " + e.Message); handHitFailed = true; ReleaseHandMask(); }

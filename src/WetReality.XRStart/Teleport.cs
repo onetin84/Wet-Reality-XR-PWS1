@@ -75,7 +75,7 @@ public sealed partial class XRStart
             var l = OffCtl;
             float now = Time.unscaledTime;
             // Beim Spruehen kein Teleport (Nutzer): kein Start, Zielen bricht ab.
-            if (SprayingNow) { if (tpAiming) { LoggerInstance.Msg("TELEPORT: abgebrochen - es wird gesprueht"); EndAim(false); } tpSinceR = tpSinceL = -1f; tpArmedR = tpArmedL = false; return; }
+            if (SprayingNow) { if (tpAiming) { Diag("TELEPORT: abgebrochen - es wird gesprueht"); EndAim(false); } tpSinceR = tpSinceL = -1f; tpArmedR = tpArmedL = false; return; }
 
             // Pistolenhand immer; die freie Hand nur im Komfortmodus.
             bool comfort = prefComfortTeleport.Value;
@@ -117,7 +117,7 @@ public sealed partial class XRStart
         tpAiming = true;
         tpFromLeft = left;
         tpFromLeftStatic = left;
-        LoggerInstance.Msg($"TELEPORT: zielen ({(left ? "linke Hand, Komfort" : "Pistolenhand")})");
+        Diag($"TELEPORT: zielen ({(left ? "linke Hand, Komfort" : "Pistolenhand")})");
         // Aus der Pistolenhand verdeckt das Werkzeug den Bogen (Nutzer 1.19.3):
         // ausgeblendet bis zum Sprung/Abbruch - derselbe Weg wie im Menue.
         if (!left) { HideTool(); tpToolHidden = true; tpNextHide = now + 0.3f; }
@@ -152,7 +152,7 @@ public sealed partial class XRStart
         if (!tpEnvelopeLogged)
         {
             tpEnvelopeLogged = true;
-            LoggerInstance.Msg($"TELEPORT: Huelle h {h:F2} m, s {s:F2} m/s (TeleportJumpSpeed), g {g:F2}, flach {reach:F2} m, Maske 0x{mask:X8}, Handhoehe {y0:F2} m -> V {V:F2} m/s");
+            Diag($"TELEPORT: Huelle h {h:F2} m, s {s:F2} m/s (TeleportJumpSpeed), g {g:F2}, flach {reach:F2} m, Maske 0x{mask:X8}, Handhoehe {y0:F2} m -> V {V:F2} m/s");
         }
 
         // Bogen: je Segment ein Bool-Strahl, beim ersten Treffer Bisektion.
@@ -191,7 +191,7 @@ public sealed partial class XRStart
             tpValid = true;
             tpWhy = ladderWhy;
             float nowL = Time.unscaledTime;
-            if (tpWhy != tpLastWhy && nowL >= tpNextWhyLog) { tpLastWhy = tpWhy; tpNextWhyLog = nowL + 0.5f; LoggerInstance.Msg("TELEPORT: " + tpWhy); }
+            if (tpWhy != tpLastWhy && nowL >= tpNextWhyLog) { tpLastWhy = tpWhy; tpNextWhyLog = nowL + 0.5f; Diag("TELEPORT: " + tpWhy); }
             DrawTeleport(true);
             return;
         }
@@ -217,7 +217,7 @@ public sealed partial class XRStart
         }
         tpTarget = hit;
         float now = Time.unscaledTime;
-        if (tpWhy != tpLastWhy && now >= tpNextWhyLog) { tpLastWhy = tpWhy; tpNextWhyLog = now + 0.5f; LoggerInstance.Msg("TELEPORT: " + tpWhy); }
+        if (tpWhy != tpLastWhy && now >= tpNextWhyLog) { tpLastWhy = tpWhy; tpNextWhyLog = now + 0.5f; Diag("TELEPORT: " + tpWhy); }
         DrawTeleport(hitSomething);
     }
 
@@ -299,7 +299,7 @@ public sealed partial class XRStart
                     best = g; side = name; break;
                 }
                 string detail = $"Leiter '{ladder.name}' oben {top.ToString("F2")} unten {bottom.ToString("F2")} vorn {fwd.ToString("F2")}, Abstand {off:F2} m";
-                if (detail != tpLadderLogged) { tpLadderLogged = detail; LoggerInstance.Msg("TELEPORT: " + detail + (side.Length > 0 ? $" -> Ziel {best.ToString("F2")} ({side})" : " -> keine Seite mit Boden und Platz")); }
+                if (detail != tpLadderLogged) { tpLadderLogged = detail; Diag("TELEPORT: " + detail + (side.Length > 0 ? $" -> Ziel {best.ToString("F2")} ({side})" : " -> keine Seite mit Boden und Platz")); }
                 if (side.Length == 0) { why = "Leiter oben: kein Boden/Platz"; return false; }
                 target = best;
                 why = $"ok, Leiter oben ({side})";
@@ -330,8 +330,8 @@ public sealed partial class XRStart
         HideTeleport();
         // Wieder zeigen - ausser das Menue hat uebernommen, das haelt es selbst verborgen.
         if (tpToolHidden) { tpToolHidden = false; if (!menuMode) ShowTool(); }
-        if (!jump) { LoggerInstance.Msg("TELEPORT: abgebrochen"); return; }
-        if (!tpValid) { LoggerInstance.Msg("TELEPORT: kein Sprung - " + tpWhy); Buzz(tpFromLeft ? false : true, "Teleport ungueltig"); return; }
+        if (!jump) { Diag("TELEPORT: abgebrochen"); return; }
+        if (!tpValid) { Diag("TELEPORT: kein Sprung - " + tpWhy); Buzz(tpFromLeft ? false : true, "Teleport ungueltig"); return; }
         var ch = charCtl;
         if (ch == null) return;
         try
@@ -347,7 +347,7 @@ public sealed partial class XRStart
             }
             ch.transform.position = ch.transform.position + delta;
             tpDone++;
-            LoggerInstance.Msg($"TELEPORT: gesprungen um {delta.ToString("F2")} ({tpWhy}) - {tpDone}. Teleport");
+            Diag($"TELEPORT: gesprungen um {delta.ToString("F2")} ({tpWhy}) - {tpDone}. Teleport");
             VignetteBlink(prefTeleportBlink.Value);   // kurze Blende, auch ohne Vignette (Comfort.cs)
             Buzz(tpFromLeft ? false : true, "Teleport");
         }

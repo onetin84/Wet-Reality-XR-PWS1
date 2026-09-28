@@ -181,7 +181,7 @@ public sealed partial class XRStart
         {
             menuMode = active;
             menuActive = active;
-            LoggerInstance.Msg(active ? $"MENUE: Zeigestrahl AN (Screen {lastScreen})" : $"MENUE: Zeigestrahl aus (Screen {lastScreen})");
+            Diag(active ? $"MENUE: Zeigestrahl AN (Screen {lastScreen})" : $"MENUE: Zeigestrahl aus (Screen {lastScreen})");
             if (!active) { SetHover(null, Vector3.zero); HideMenuLine(); menuCandidates.Clear(); menuScrolls.Clear(); menuDrag = null; menuDirHave = false; ShowTool(); }
             else HideTool();
         }
@@ -230,7 +230,7 @@ public sealed partial class XRStart
             // sein Rechteck verlaesst - wie die Maus.
             if (menuDrag != null)
             {
-                if (!down) { LoggerInstance.Msg("MENUE: Ziehen Ende " + Caption(menuDrag)); menuDrag = null; }
+                if (!down) { Diag("MENUE: Ziehen Ende " + Caption(menuDrag)); menuDrag = null; }
                 else if (onPlane) DragValue(menuDrag, end);
             }
             else
@@ -250,7 +250,7 @@ public sealed partial class XRStart
 
                 if (down && !menuTrigWas && menuHover != null)
                 {
-                    if (IsDraggable(menuHover)) { menuDrag = menuHover; LoggerInstance.Msg("MENUE: Ziehen " + Caption(menuDrag)); Buzz(true, "Menue-Regler"); DragValue(menuDrag, end); }
+                    if (IsDraggable(menuHover)) { menuDrag = menuHover; Diag("MENUE: Ziehen " + Caption(menuDrag)); Buzz(true, "Menue-Regler"); DragValue(menuDrag, end); }
                     else ClickMenu(menuHover, end, menuHoverGo);
                 }
             }
@@ -259,7 +259,7 @@ public sealed partial class XRStart
             if (menuHover != null && now - menuHoverSince >= HoverLogCalm)
             {
                 string c = Caption(menuHover);
-                if (c != menuHoverLogged) { menuHoverLogged = c; LoggerInstance.Msg("MENUE: Ziel " + c); }
+                if (c != menuHoverLogged) { menuHoverLogged = c; Diag("MENUE: Ziel " + c); }
             }
             menuStatus = menuHover == null ? "kein Ziel" : Caption(menuHover);
 
@@ -271,7 +271,7 @@ public sealed partial class XRStart
             if (now >= nextMenuLog)
             {
                 nextMenuLog = now + 5f;
-                LoggerInstance.Msg($"MENUE: Screen {lastScreen}, {menuCandidates.Count} Kandidaten, {menuScrolls.Count} Scrollflaechen, Ziel {menuStatus}, Strahl {(onPlane ? "trifft die UI-Ebene" : "an der UI-Ebene vorbei")}");
+                Diag($"MENUE: Screen {lastScreen}, {menuCandidates.Count} Kandidaten, {menuScrolls.Count} Scrollflaechen, Ziel {menuStatus}, Strahl {(onPlane ? "trifft die UI-Ebene" : "an der UI-Ebene vorbei")}");
             }
         }
         catch (Exception e) { LoggerInstance.Warning("MENUE: " + e.GetType().Name + ": " + e.Message); }
@@ -288,7 +288,7 @@ public sealed partial class XRStart
             if (gameState == null) return false;
             var s = gameState.CurrentScreen;
             string name = s.ToString();
-            if (name != lastScreen) { LoggerInstance.Msg($"MENUE: Screen {(lastScreen.Length == 0 ? "-" : lastScreen)} -> {name}"); lastScreen = name; nextMenuScan = 0f; nextGraphicScan = 0f; }
+            if (name != lastScreen) { Diag($"MENUE: Screen {(lastScreen.Length == 0 ? "-" : lastScreen)} -> {name}"); lastScreen = name; nextMenuScan = 0f; nextGraphicScan = 0f; }
             if (s != GameScreen.Game && s != GameScreen.Loading && s != GameScreen.None) return true;
             // Das Inventar (Y/E) ist ein Popup im Screen Game und sperrt die Eingabe.
             return s == GameScreen.Game && InventoryOpen();
@@ -307,14 +307,14 @@ public sealed partial class XRStart
         try
         {
             var pi = wheelPi;
-            if (pi == null || !pi.BlockedInput) { if (inventoryWasOpen) { inventoryWasOpen = false; LoggerInstance.Msg("MENUE: Inventar zu"); } return false; }
+            if (pi == null || !pi.BlockedInput) { if (inventoryWasOpen) { inventoryWasOpen = false; Diag("MENUE: Inventar zu"); } return false; }
             if ((inventoryGo == null || !inventoryGo.activeInHierarchy) && Time.unscaledTime >= nextInventoryFind)
             {
                 nextInventoryFind = Time.unscaledTime + 0.3f;
                 inventoryGo = GameObject.Find("InventoryPopup");
             }
             bool open = inventoryGo != null && inventoryGo.activeInHierarchy;
-            if (open != inventoryWasOpen) { inventoryWasOpen = open; LoggerInstance.Msg(open ? $"MENUE: Inventar offen ('{PathOf(inventoryGo!.transform)}')" : "MENUE: Inventar zu"); }
+            if (open != inventoryWasOpen) { inventoryWasOpen = open; Diag(open ? $"MENUE: Inventar offen ('{PathOf(inventoryGo!.transform)}')" : "MENUE: Inventar zu"); }
             return open;
         }
         catch { return false; }
@@ -348,7 +348,7 @@ public sealed partial class XRStart
                 ScanMenuGraphics();
                 double ms = sw.Elapsed.TotalMilliseconds;
                 scanCostMax = Math.Max(scanCostMax, ms);
-                if (nowS >= nextScanCostLog) { nextScanCostLog = nowS + 10f; LoggerInstance.Msg($"MENUE: Graphic-Scan {menuGraphics.Count} raycastbar, {ms:F1} ms (max {scanCostMax:F1} ms)"); scanCostMax = 0; }
+                if (nowS >= nextScanCostLog) { nextScanCostLog = nowS + 10f; Diag($"MENUE: Graphic-Scan {menuGraphics.Count} raycastbar, {ms:F1} ms (max {scanCostMax:F1} ms)"); scanCostMax = 0; }
             }
             var scrolls = uiRoot!.GetComponentsInChildren<ScrollRect>(false);
             for (int i = 0; i < scrolls.Length; i++)
@@ -451,7 +451,7 @@ public sealed partial class XRStart
             string? viaEvents = MouseClick(start, ped);
             if (viaEvents != null)
             {
-                LoggerInstance.Msg($"MENUE: Klick {cap} -> {viaEvents}");
+                Diag($"MENUE: Klick {cap} -> {viaEvents}");
                 Buzz(true, "Menue-Klick");
                 nextMenuScan = 0f; nextGraphicScan = 0f;
                 return;
@@ -472,9 +472,9 @@ public sealed partial class XRStart
                 var fb = go.GetComponent<Il2CppFuturLab.FuturButton>();
                 if (mb != null) { mb.Click(); how = "ManagedButtonBase.Click (Rueckfall)"; }
                 else if (fb != null) { fb.Submit(); how = "FuturButton.Submit (Rueckfall)"; }
-                else { LoggerInstance.Msg($"MENUE: Klick {cap} - {s.GetIl2CppType().Name} nicht bedienbar"); return; }
+                else { Diag($"MENUE: Klick {cap} - {s.GetIl2CppType().Name} nicht bedienbar"); return; }
             }
-            LoggerInstance.Msg($"MENUE: Klick {cap} -> {how}");
+            Diag($"MENUE: Klick {cap} -> {how}");
             Buzz(true, "Menue-Klick");
             nextMenuScan = 0f; nextGraphicScan = 0f;   // ein Klick oeffnet oft neue Knoepfe (Dropdown-Liste, Popup)
         }
@@ -562,14 +562,14 @@ public sealed partial class XRStart
             }
             if (best == null && ScrollByScrollbar(world, y)) return;
             string chosen = best == null ? "keine" : best.name;
-            if (chosen != scrollChosen) { scrollChosen = chosen; LoggerInstance.Msg($"MENUE: Scrollflaeche {chosen} (unter dem Strahl, Inhalt/Sicht:{seen})"); }
+            if (chosen != scrollChosen) { scrollChosen = chosen; Diag($"MENUE: Scrollflaeche {chosen} (unter dem Strahl, Inhalt/Sicht:{seen})"); }
             if (best == null) return;
             float s = Math.Sign(y) * (Math.Abs(y) - ScrollDeadZone) / (1f - ScrollDeadZone);
             // Stick hoch = nach oben = normalizedPosition waechst.
             float step = s * ScrollViewportsPerSecond * Time.unscaledDeltaTime * vh / (ch - vh);
             best.verticalNormalizedPosition = Mathf.Clamp01(best.verticalNormalizedPosition + step);
             float now = Time.unscaledTime;
-            if (now - scrollLoggedAt > 2f) { scrollLoggedAt = now; LoggerInstance.Msg($"MENUE: Scrollen '{best.name}' -> {best.verticalNormalizedPosition:F2} (Inhalt {ch:F0}, Sicht {vh:F0})"); }
+            if (now - scrollLoggedAt > 2f) { scrollLoggedAt = now; Diag($"MENUE: Scrollen '{best.name}' -> {best.verticalNormalizedPosition:F2} (Inhalt {ch:F0}, Sicht {vh:F0})"); }
         }
         catch (Exception e) { LoggerInstance.Warning("MENUE: Scrollen " + e.GetType().Name + ": " + e.Message); }
     }
@@ -645,7 +645,7 @@ public sealed partial class XRStart
             string key = $"'{g.name}' unter '{(p == null ? "-" : p.name)}' {g.GetIl2CppType().Name}, Canvas '{(cv == null ? "-" : cv.name)}' order {(cv == null ? 0 : cv.sortingOrder)} depth {g.depth} - {why}";
             if (key == lastBlocker) return;
             lastBlocker = key;
-            LoggerInstance.Msg("MENUE: verdeckt von " + key);
+            Diag("MENUE: verdeckt von " + key);
         }
         catch { }
     }
@@ -720,7 +720,7 @@ public sealed partial class XRStart
                     b.onClick.Invoke(); how = $"Button.onClick.Invoke ({b.onClick.GetPersistentEventCount()} feste Ziele)"; break;
                 default: clickStage = 0; return false;
             }
-            LoggerInstance.Msg($"MENUE: Klick {cap} erneut (Stufe {clickStage}) -> {how}");
+            Diag($"MENUE: Klick {cap} erneut (Stufe {clickStage}) -> {how}");
             Buzz(true, "Menue-Klick");
             nextMenuScan = 0f; nextGraphicScan = 0f;
             return true;
@@ -753,7 +753,7 @@ public sealed partial class XRStart
         if (best.direction == Scrollbar.Direction.TopToBottom) step = -step;
         best.value = Mathf.Clamp01(best.value + step);
         string name = best.name + "/" + (best.transform.parent == null ? "" : best.transform.parent.name);
-        if (name != scrollChosen) { scrollChosen = name; LoggerInstance.Msg($"MENUE: Scrollen ueber den Scrollbalken '{name}' (size {best.size:F2})"); }
+        if (name != scrollChosen) { scrollChosen = name; Diag($"MENUE: Scrollen ueber den Scrollbalken '{name}' (size {best.size:F2})"); }
         return true;
     }
 
@@ -801,6 +801,7 @@ public sealed partial class XRStart
 
     private void LogComponents(Selectable s)
     {
+        if (!dev) return;
         try
         {
             string key = s.gameObject.name + "/" + (s.transform.parent == null ? "" : s.transform.parent.name);
@@ -814,7 +815,7 @@ public sealed partial class XRStart
                 for (int k = 0; k < comps.Length; k++) if (comps[k] != null) names.Add(comps[k].GetIl2CppType().Name);
                 sb.Append($" | [{i}] '{t.name}': {string.Join(", ", names)}");
             }
-            LoggerInstance.Msg("MENUE: Komponenten" + sb);
+            Diag("MENUE: Komponenten" + sb);
         }
         catch (Exception e) { LoggerInstance.Warning("MENUE: Komponenten " + e.GetType().Name); }
     }
@@ -835,7 +836,7 @@ public sealed partial class XRStart
                 toolHidden.Add(r);
                 n++;
             }
-            if (n > 0) LoggerInstance.Msg($"MENUE: Werkzeug ausgeblendet, {n} Renderer ({toolHidden.Count} gesamt) unter '{anchor.name}'");
+            if (n > 0) Diag($"MENUE: Werkzeug ausgeblendet, {n} Renderer ({toolHidden.Count} gesamt) unter '{anchor.name}'");
         }
         catch (Exception e) { LoggerInstance.Warning("MENUE: Werkzeug ausblenden " + e.GetType().Name + ": " + e.Message); }
     }
@@ -845,7 +846,7 @@ public sealed partial class XRStart
         if (toolHidden.Count == 0) return;
         int n = 0;
         foreach (var r in toolHidden) { try { if (r != null) { r.enabled = true; n++; } } catch { } }
-        LoggerInstance.Msg($"MENUE: Werkzeug wieder sichtbar, {n} von {toolHidden.Count} Renderern");
+        Diag($"MENUE: Werkzeug wieder sichtbar, {n} von {toolHidden.Count} Renderern");
         toolHidden.Clear();
     }
 

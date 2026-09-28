@@ -162,7 +162,7 @@ public sealed partial class XRStart
                 sprayNextSend = now + interval;
             }
 
-            if (sprayWashing && now >= sprayNextReport)
+            if (dev && sprayWashing && now >= sprayNextReport)   // DescribeContact tastet mit Strahlen ab - Messung
             {
                 sprayNextReport = now + 1f;
                 LoggerInstance.Msg($"SPRUEH-HAPTIK: Duese {NozzleName(sprayNozzle)} Reiniger {(PowerWasherClass)sprayClass} | " +
@@ -258,7 +258,7 @@ public sealed partial class XRStart
         sprayNozzle = nozzle;
         sprayClass = cls;
         spraySawConfig = true;
-        LoggerInstance.Msg($"SPRUEH-HAPTIK: Konfiguration Duese {NozzleName(nozzle)} Reiniger {(cls < 0 ? "?" : ((PowerWasherClass)cls).ToString())} -> Basis {SteadyBaseFor(nozzle, cls):F3}");
+        Diag($"SPRUEH-HAPTIK: Konfiguration Duese {NozzleName(nozzle)} Reiniger {(cls < 0 ? "?" : ((PowerWasherClass)cls).ToString())} -> Basis {SteadyBaseFor(nozzle, cls):F3}");
         if (first) return;
 
         bool soapBefore = nozzleBefore == (int)NozzleType.Black_65_Soap, soapNow = nozzle == (int)NozzleType.Black_65_Soap;

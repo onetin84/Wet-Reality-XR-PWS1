@@ -75,7 +75,7 @@ public sealed partial class XRStart
             snapArmed = false;
             if (prefVignetteTurn.Value) turnPulseUntil = Time.unscaledTime + 0.14f;
             float d = Math.Sign(x) * prefSnapAngle.Value;
-            LoggerInstance.Msg($"SNAP-TURN {(x < 0f ? "links" : "rechts")} {prefSnapAngle.Value:F0} Grad");
+            Diag($"SNAP-TURN {(x < 0f ? "links" : "rechts")} {prefSnapAngle.Value:F0} Grad");
             return d;
         }
         // Aus der Totzone heraus weich einsetzen, nicht mit einem Sprung.

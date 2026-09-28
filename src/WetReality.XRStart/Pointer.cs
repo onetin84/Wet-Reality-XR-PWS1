@@ -147,7 +147,7 @@ public sealed partial class XRStart
             var aimCtl = l.TryGetChildControl("pointerRotation")?.TryCast<QuaternionControl>();
             var aim = aimCtl != null ? aimCtl.ReadValue() : l.deviceRotation.ReadValue();
             string src = aimCtl != null ? "Aim-Pose" : "Grip-Pose (kein pointerRotation)";
-            if (src != pointerSource) { pointerSource = src; LoggerInstance.Msg("ZEIGER: Off-Hand-Richtung aus " + src); }
+            if (src != pointerSource) { pointerSource = src; Diag("ZEIGER: Off-Hand-Richtung aus " + src); }
 
             var camT = cam.transform;
             var toWorld = camT.rotation * Quaternion.Inverse(hmdRot);
@@ -235,7 +235,7 @@ public sealed partial class XRStart
         if (has != lastHasTarget)
         {
             lastHasTarget = has;
-            LoggerInstance.Msg(has ? $"ZEIGER: Ziel '{item!.gameObject.name}' ({item.GetIl2CppType().Name})" : "ZEIGER: kein Ziel");
+            Diag(has ? $"ZEIGER: Ziel '{item!.gameObject.name}' ({item.GetIl2CppType().Name})" : "ZEIGER: kein Ziel");
             Buzz(false, has ? "Ziel erfasst" : "Ziel verloren");   // PWS2 grab ready / grab lost
         }
         if (!has) { HideLine(); return; }
@@ -277,7 +277,7 @@ public sealed partial class XRStart
         if (usable != lastUsableColliders)
         {
             lastUsableColliders = usable;
-            LoggerInstance.Msg($"ZEIGER: {usable} brauchbare Collider am Ziel, Strahllaenge {depth:F2} m");
+            Diag($"ZEIGER: {usable} brauchbare Collider am Ziel, Strahllaenge {depth:F2} m");
         }
         if (pointerLine == null) return;
         var bc = BeamTint();   // eine Farbe fuer alle Zeiger (PointerStyle.cs)
@@ -291,7 +291,7 @@ public sealed partial class XRStart
     private void HideLine()
     {
         if (pointerLine != null && pointerLine.enabled) pointerLine.enabled = false;
-        if (lastHasTarget) { lastHasTarget = false; LoggerInstance.Msg("ZEIGER: kein Ziel"); Buzz(false, "Ziel verloren"); }
+        if (lastHasTarget) { lastHasTarget = false; Diag("ZEIGER: kein Ziel"); Buzz(false, "Ziel verloren"); }
     }
 
     private void ReleasePointer()
@@ -344,12 +344,13 @@ public sealed partial class XRStart
     // Aus OnUpdate: 30 Frames nach dem Druck der Stand danach.
     private void TickPickupDiag()
     {
+        if (!dev) return;
         if (pickupDiagFrames > 0 && --pickupDiagFrames == 0)
         {
             pickupDiag.Add("X nachher (30 Frames): " + PickupState());
             pickupDiagFrames = -1;
         }
-        foreach (var d in pickupDiag) LoggerInstance.Msg("ZEIGER: " + d);
+        foreach (var d in pickupDiag) Diag("ZEIGER: " + d);
         pickupDiag.Clear();
     }
 }

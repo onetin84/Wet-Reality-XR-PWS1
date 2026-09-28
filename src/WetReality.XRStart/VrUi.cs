@@ -188,7 +188,7 @@ public sealed partial class XRStart
                 var want = new Vector3(UiScale, UiScale, 1f);
                 if (ch.localScale != want) { ch.localScale = want; written++; }
             }
-            if (written > 0) LoggerInstance.Msg($"VR-UI: Skalierung {UiScale:F4} auf {written} Kindknoten");
+            if (written > 0) Diag($"VR-UI: Skalierung {UiScale:F4} auf {written} Kindknoten");
         }
         catch (Exception e) { LoggerInstance.Warning("VR-UI: Skalierung " + e.GetType().Name + ": " + e.Message); }
     }
@@ -217,7 +217,7 @@ public sealed partial class XRStart
                 try { shaders.Add(m.shader == null ? "?" : m.shader.name); } catch { }
             }
             if (added > 0)
-                LoggerInstance.Msg($"VR-UI: ZTest Always auf {added} neue Materialien ({uiDepthTouched.Count} gesamt, {graphics.Length} Graphics) - Shader {string.Join(", ", shaders)}");
+                Diag($"VR-UI: ZTest Always auf {added} neue Materialien ({uiDepthTouched.Count} gesamt, {graphics.Length} Graphics) - Shader {string.Join(", ", shaders)}");
         }
         catch (Exception e) { LoggerInstance.Warning("VR-UI: ZTest " + e.GetType().Name + ": " + e.Message); }
     }
