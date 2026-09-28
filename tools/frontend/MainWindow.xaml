@@ -320,10 +320,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-                <!-- Row 4: der Startknopf. Eigene Zeile, damit die Fusszeile
-                     mit Speichern und Kurzanleitung unangetastet bleibt - sie
-                     muss nicht umnummeriert werden. -->
+                <!-- Row 3: Fusszeile, Startknopf und Speichern in einer Zeile. -->
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
@@ -398,7 +395,7 @@
             </Border>
 
             <!-- SETTINGS -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+            <ScrollViewer x:Name="SettingsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           Padding="0,0,10,0">
                 <!-- Bottom margin so the last control inside is not flush against
@@ -426,7 +423,7 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Turn speed" />
                                     <Slider x:Name="TurnSpeedSlider" Grid.Column="1"
-                                            Minimum="30" Maximum="180" />
+                                            Minimum="30" Maximum="180" Value="90" />
                                     <TextBlock x:Name="TurnSpeedValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -441,21 +438,17 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Washer hand" />
-                                    <ComboBox x:Name="HandBox" Grid.Column="1">
+                                    <ComboBox x:Name="HandBox" Grid.Column="1" SelectedIndex="0">
                                         <ComboBoxItem Content="Right" />
                                         <ComboBoxItem Content="Left" />
                                     </ComboBox>
                                 </Grid>
 
-                                <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
-                                          Content="Show VR hands" />
-                                <!-- XRStart 1.30.0: OrangeHands wie PWS2. -->
-                                <CheckBox x:Name="OrangeHandsCheck" Margin="0,0,0,8"
-                                          Content="Orange gloves" />
-                                <!-- XRStart 1.27.0/1.29.0: Koerperzonen-Gesten (GestureZones). -->
-                                <CheckBox x:Name="GesturesCheck" Margin="0,0,0,8"
-                                          Content="Gestures (shoulder, hip, washer)"
-                                          ToolTip="Shoulder + right grip = next washer, hip + right grip = soap, left hand at the washer + left grip = extension" />
+                                <!-- VR-Haende, Handschuhe und Ziellaser stehen seit
+                                     1.34.0 unter DISPLAY: sie sind Darstellung, und
+                                     hier machten sie STEUERUNG doppelt so hoch wie
+                                     das Feld daneben (Nutzer 28.09., "grosse
+                                     Luecken"). -->
 
                                 <!-- PWS1: how far the left hand reaches for objects to
                                      pick up (PWS2 AimInteractionRange, 5 m). -->
@@ -468,19 +461,22 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Pickup reach" />
                                     <Slider x:Name="ReachSlider" Grid.Column="1"
-                                            Minimum="1" Maximum="10" />
+                                            Minimum="1" Maximum="10" Value="5" />
                                     <TextBlock x:Name="ReachValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
 
-                                <CheckBox x:Name="SprayHapticsCheck" Margin="0,4,0,8"
-                                          Content="Vibration while spraying" />
+                                <!-- XRStart 1.27.0/1.29.0: Koerperzonen-Gesten (GestureZones). -->
+                                <!-- IsChecked = Vorgabe der Mod, siehe DISPLAY. -->
+                                <CheckBox x:Name="GesturesCheck" Margin="0,4,0,8"
+                                          IsChecked="True"
+                                          Content="Gestures (shoulder, hip, washer)"
+                                          ToolTip="Shoulder + right grip = next washer, hip + right grip = soap, left hand at the washer + left grip = extension" />
+                                <CheckBox x:Name="SprayHapticsCheck" Margin="0,0,0,8"
+                                          IsChecked="True" Content="Vibration while spraying" />
                                 <!-- XRStart 1.30.0: HandHit wie PWS2. -->
                                 <CheckBox x:Name="HandHitCheck" Margin="0,0,0,8"
-                                          Content="Spraying your free hand makes it vibrate" />
-                                <!-- XRStart 1.32.0: ShowWashLaser (Vorgabe aus, wie PWS2). -->
-                                <CheckBox x:Name="LaserCheck" Margin="0,0,0,8"
-                                          Content="Show aiming laser" />
+                                          IsChecked="True" Content="Spraying your free hand makes it vibrate" />
 
                                 <Grid Margin="0,0,0,4">
                                     <Grid.ColumnDefinitions>
@@ -491,7 +487,7 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Vibration strength" />
                                     <Slider x:Name="HapticIntensitySlider" Grid.Column="1"
-                                            Minimum="0" Maximum="1.25" />
+                                            Minimum="0" Maximum="1.25" Value="1" />
                                     <TextBlock x:Name="HapticIntensityValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -516,7 +512,7 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Menu size" />
                                     <Slider x:Name="UiScaleSlider" Grid.Column="1"
-                                            Minimum="0.2" Maximum="1.0" />
+                                            Minimum="0.2" Maximum="1.0" Value="0.3627" />
                                     <TextBlock x:Name="UiScaleValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -530,7 +526,7 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Menu distance" />
                                     <Slider x:Name="UiDistanceSlider" Grid.Column="1"
-                                            Minimum="0.8" Maximum="4.0" />
+                                            Minimum="0.8" Maximum="4.0" Value="2" />
                                     <TextBlock x:Name="UiDistanceValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -548,18 +544,13 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Pointer colour" />
-                                    <ComboBox x:Name="PointerColorBox" Grid.Column="1">
+                                    <ComboBox x:Name="PointerColorBox" Grid.Column="1" SelectedIndex="2">
                                         <ComboBoxItem Content="Neon pink" />
                                         <ComboBoxItem Content="Fresh green" />
                                         <ComboBoxItem Content="Azure blue" />
                                         <ComboBoxItem Content="Sun yellow" />
                                     </ComboBox>
                                 </Grid>
-
-                                <!-- PWS1: DesktopMirror nur noch ein/aus (Nutzer 28.09.);
-                                     ein = left, oder der Wert right/both aus der cfg. -->
-                                <CheckBox x:Name="MirrorCheck" Margin="0,0,0,10"
-                                          Content="Show headset view on the monitor" />
 
                                 <!-- HIER STANDEN DREI HAEKCHEN - Abschnitt 171.
                                      Nebel, Lichtstreuung und Grasklingen waren
@@ -576,7 +567,7 @@
 
                                      An ihrer Stelle ein Wert, den man sehen
                                      will. -->
-                                <Grid Margin="0,4,0,0">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="150" />
                                         <ColumnDefinition Width="*" />
@@ -585,10 +576,31 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Teleport target" />
                                     <Slider x:Name="MarkerSizeSlider" Grid.Column="1"
-                                            Minimum="0.3" Maximum="1.2" />
+                                            Minimum="0.3" Maximum="1.2" Value="0.45" />
                                     <TextBlock x:Name="MarkerSizeValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
+
+                                <!-- KEIN HAKEN FUER DIE VR-HAENDE (Nutzer 28.09.):
+                                     sie sind immer an, der Konfigurator schreibt
+                                     ShowVrHands = true. Ohne sie haengen die
+                                     Spielarme an der Kopfkamera, und Handschuhe
+                                     und Hand-Treffer haetten nichts, woran sie
+                                     wirken. PWS2 hatte den Haken noch.
+
+                                     IsChecked HIER = die Vorgabe der Mod. Ohne
+                                     gefundene Installation laedt der Konfigurator
+                                     nichts, und dann zeigte jedes Haekchen "aus". -->
+                                <!-- XRStart 1.30.0: OrangeHands wie PWS2. -->
+                                <CheckBox x:Name="OrangeHandsCheck" Margin="0,4,0,8"
+                                          IsChecked="True" Content="Orange gloves" />
+                                <!-- XRStart 1.32.0: ShowWashLaser (Vorgabe aus, wie PWS2). -->
+                                <CheckBox x:Name="LaserCheck" Margin="0,0,0,8"
+                                          Content="Show aiming laser" />
+                                <!-- PWS1: DesktopMirror nur noch ein/aus (Nutzer 28.09.);
+                                     ein = left, oder der Wert right/both aus der cfg. -->
+                                <CheckBox x:Name="MirrorCheck" Margin="0,0,0,0"
+                                          Content="Show headset view on the monitor" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -643,7 +655,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Preset" />
-                                    <ComboBox x:Name="ComfortPresetBox" Grid.Column="1">
+                                    <ComboBox x:Name="ComfortPresetBox" Grid.Column="1" SelectedIndex="0">
                                         <ComboBoxItem Content="All off" />
                                         <ComboBoxItem Content="Gentle" />
                                         <ComboBoxItem Content="Maximum" />
@@ -671,7 +683,7 @@
                                     <Slider x:Name="SnapAngleSlider" Grid.Column="1"
                                             Minimum="15" Maximum="60"
                                             TickFrequency="15" IsSnapToTickEnabled="True"
-                                            TickPlacement="BottomRight" />
+                                            TickPlacement="BottomRight" Value="45" />
                                     <TextBlock x:Name="SnapAngleValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -686,7 +698,7 @@
                                     <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
                                                Text="Vignette strength" />
                                     <Slider x:Name="VignetteStrengthSlider" Grid.Column="1"
-                                            Minimum="0" Maximum="1" />
+                                            Minimum="0" Maximum="1" Value="0.7" />
                                     <TextBlock x:Name="VignetteStrengthValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
@@ -813,39 +825,47 @@
                  36 px hoeher macht. Auf 1080p deckelt WorkArea das Fenster bei
                  etwa 1000 px, und jeder Pixel darueber holt das Scrollen
                  zurueck, das Abschnitt 108 ausdruecklich behoben hat. -->
-            <StackPanel x:Name="LaunchPanel" Grid.Row="4" Margin="0,14,0,0">
-                <Button x:Name="LaunchButton" HorizontalAlignment="Left"
-                        Style="{StaticResource PrimaryButton}"
-                        Content="Start the game" />
-
-                <TextBlock x:Name="LaunchNote" Margin="2,8,0,0"
-                           Foreground="{StaticResource Muted}" FontSize="11"
-                           TextWrapping="Wrap"
-                           Text="Starts PowerWash Simulator through Steam, like a click in the library." />
-            </StackPanel>
-
-            <Grid Grid.Row="3" Margin="0,18,0,0">
+            <!-- EINE ZEILE seit 1.34.0: Start links, Speichern rechts, auf
+                 derselben Hoehe. Vorher sass Speichern eine Zeile ueber dem
+                 Startknopf am anderen Rand - zwei Aktionen, die man als
+                 zusammengehoerig liest, sahen wie Fremde aus, und die zweite
+                 Zeile kostete rund 50 px Hoehe. Die Knoepfe haengen oben
+                 (VerticalAlignment Top), damit der Hinweis unter Start die
+                 Zeile verlaengern kann, ohne Speichern zu verschieben. -->
+            <Grid Grid.Row="3" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Button x:Name="GuideButton" Grid.Column="0"
-                        Style="{StaticResource GhostButton}" Content="Open quick guide"
-                        Visibility="Collapsed" />
+                <StackPanel x:Name="LaunchPanel" Grid.Column="0">
+                    <Button x:Name="LaunchButton" HorizontalAlignment="Left"
+                            Style="{StaticResource PrimaryButton}"
+                            Content="Start the game" />
 
-                <TextBlock x:Name="SaveHint" Grid.Column="1" VerticalAlignment="Center"
-                           Margin="16,0,16,0" Foreground="{StaticResource Muted}"
-                           FontSize="11" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="LaunchNote" Margin="2,8,0,0"
+                               Foreground="{StaticResource Muted}" FontSize="11"
+                               Text="Starts PowerWash Simulator through Steam, like a click in the library." />
+                </StackPanel>
 
-                <Button x:Name="SaveButton" Grid.Column="2"
+                <Button x:Name="GuideButton" Grid.Column="1" Margin="16,0,0,0"
+                        VerticalAlignment="Top"
+                        Style="{StaticResource GhostButton}" Content="Open quick guide" />
+
+                <TextBlock x:Name="SaveHint" Grid.Column="2" VerticalAlignment="Top"
+                           Margin="16,10,16,0" Foreground="{StaticResource Muted}"
+                           FontSize="11" TextTrimming="CharacterEllipsis"
+                           HorizontalAlignment="Right" />
+
+                <Button x:Name="SaveButton" Grid.Column="3" VerticalAlignment="Top"
                         Style="{StaticResource PrimaryButton}" Content="Save" />
 
                 <!-- Author credit. Deliberately quiet: a signature, not a banner. -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal"
-                            VerticalAlignment="Center" Margin="20,0,0,0">
+                <StackPanel Grid.Column="4" Orientation="Horizontal"
+                            VerticalAlignment="Top" Margin="20,0,0,0">
                     <Grid Width="34" Height="34">
                         <Ellipse x:Name="AvatarPlaceholder" Fill="#1A15D9D0"
                                  Stroke="#5515D9D0" StrokeThickness="1" />

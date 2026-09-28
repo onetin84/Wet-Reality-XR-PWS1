@@ -1,0 +1,227 @@
+================================================================================
+  WET REALITY XR MOD  @@VERSION@@  -  BETA
+  Raumskaliges VR für PowerWash Simulator (das erste Spiel)
+  von Tino
+================================================================================
+
+WAS DAS IST
+
+  Eine VR-Mod, die dich mit Headset und Controllern mitten in PowerWash
+  Simulator stellt. Die Waschpistole folgt deiner Hand in sechs Freiheitsgraden:
+  wohin du schaust und wohin du sprühst, ist völlig unabhängig.
+
+  Getestet mit einer Meta Quest 3 über Virtual Desktop, mit PowerWash Simulator
+  1.11.0 (Steam-Build 1394). Andere OpenXR-Headsets sollten funktionieren, sind
+  aber nicht ausprobiert.
+
+  Das ist eine Beta. Spielbar, nicht fertig. Siehe BEKANNTE EINSCHRÄNKUNGEN.
+
+  English: see README.txt
+
+
+INSTALLIEREN
+
+  1. PowerWash Simulator muss GESCHLOSSEN sein.
+
+  2. Doppelklick auf  Install.cmd
+
+  3. Headset-Software starten, dann das Spiel über Steam starten.
+
+  Das ist alles. Vorher nichts installieren, nichts auswählen, keine
+  Administratorrechte.
+
+  Der Installer braucht eine Internetverbindung: Er lädt den Mod-Loader und,
+  falls dein System keine hat, die Laufzeit, die dieser braucht - höchstens
+  etwa 55 MB. Jede Datei wird vor dem Einsetzen gegen einen bekannten
+  Fingerabdruck geprüft, und was schon stimmt, wird übersprungen. Schlägt ein
+  Download fehl, Install.cmd einfach noch einmal starten.
+
+  Die OpenXR-Unterstützung, die VR braucht, bringt das Spiel selbst mit; der
+  Installer prüft nur, dass sie da ist.
+
+  Alles landet im Ordner des Spiels. Nichts wird im System installiert, nichts
+  geht in die Registry, und Uninstall.cmd nimmt alles wieder heraus.
+
+  Meldet Windows, das Skript dürfe nicht ausgeführt werden: Rechtsklick auf
+  Install.cmd, Eigenschaften, unten "Zulassen" anhaken.
+
+  Kann der Installer nicht in den Spielordner schreiben - das passiert, wenn
+  Steam das Spiel unter "Programme" installiert hat -, Rechtsklick auf
+  Install.cmd und "Als Administrator ausführen".
+
+
+SPIELEN
+
+  Das Spiel wie gewohnt über Steam starten. Headset aufsetzen: VR startet im
+  Hauptmenü von selbst, und die Pistole liegt in der Hand, sobald ein Level
+  geladen ist.
+
+  Die Headset-Software VOR dem Spiel starten.
+
+  DER ERSTE START NACH DER INSTALLATION dauert eine Weile ohne sichtbaren
+  Fortschritt und braucht eine Internetverbindung. Der Mod-Loader bereitet
+  einmalig seine Hilfsdateien vor. Es ist nicht abgestürzt. Abwarten.
+
+  Beenden über das Menü des Spiels.
+
+
+STEUERUNG UND EINSTELLUNGEN
+
+  Der linke Controller bewegt dich, der rechte ist die Pistole. Linkshänder
+  wählen die Pistolenhand im Konfigurator; dann tauschen alle Rollen die Seite,
+  nur die Menütaste bleibt links.
+
+  PISTOLENHAND (rechts)
+    Trigger             sprühen, solange gehalten; klickt in Menüs
+    Griff               Dauersprühen an oder aus
+    A                   springen (aus beim Komfort-Teleport)
+    B tippen / halten   ducken / hinlegen
+    Stick links/rechts  drehen (gleitend oder Snap-Turn)
+    Stick hoch          Ziel-Teleport, gezielt mit dieser Hand
+    Stick runter        nächste Düse
+    R3 halten           Ausrüstungsscheiben
+
+  FREIE HAND (links)
+    Stick               gehen; voll gedrückt: sprinten
+    Trigger             Düse drehen
+    Griff               Schmutz hervorheben; beim Tragen: Gegenstand drehen
+    X                   aufnehmen / ablegen
+    Y tippen            Inventar; in Menüs: zurück
+    Y halten            nächster Washer
+    L3                  nächste Verlängerung
+    Menü tippen/halten  Pausenmenü / Immersionsmodus (Spiel-UI aus und an)
+
+  GESTEN
+    Pistolenhand hinter die Schulter + Griff   nächster Washer
+    Pistolenhand an die Hüfte + Griff          Seife aus dem Holster
+    Freie Hand an die Pistole + Griff          nächste Verlängerung
+    Freie Hand: Griff + X + Y, halten          Griff-Kalibrierung - Pistolen-
+                                               hand dorthin, wo die Pistole
+                                               sitzen soll, dann loslassen
+
+  Der Ziel-Teleport reicht nie höher als ein Sprung und bringt dich auf
+  Kanten, begehbare Treppen und auf eine aufgestellte Leiter.
+
+  KOMFORTOPTIONEN, alle standardmäßig AUS: Teleport statt Gehen, Snap-Turn
+  (15, 30, 45 oder 60 Grad), Vignette beim Bewegen. Eine Vorlage setzt sie auf
+  einmal: Alle aus, Sanft oder Maximal.
+
+  Doppelklick auf  Configurator.cmd
+
+  Er enthält die ganze Belegung unter "Kurzanleitung öffnen" und Einstellungen
+  für Pistolenhand, Drehgeschwindigkeit, Greifreichweite, Vibration, orange
+  Handschuhe, Gesten, Ziellaser, Menügröße und -abstand, Zeigerfarbe, das
+  Headsetbild auf dem Monitor, das Teleportziel, die Komfortoptionen und das
+  Griff-Feintuning. Der Knopf unten startet das Spiel über Steam.
+
+  Alles Feinere steht als Klartext in <Spiel>\UserData\MelonPreferences.cfg.
+  Vor dem Bearbeiten das Spiel schließen: Der Loader schreibt die Datei beim
+  Beenden neu und würde deine Änderung überschreiben.
+
+  Die Anleitung ist auch eine Datei zum direkten Öffnen:
+  configurator\QuickGuide-de.html
+
+
+ENTFERNEN
+
+  Doppelklick auf  Uninstall.cmd
+
+  Es entfernt genau das, was es installiert hat, und nur solange diese Dateien
+  noch die geschriebenen sind - was du selbst ersetzt hast, bleibt liegen und
+  wird gemeldet. Deine Einstellungen bleiben, außer du willst sie auch weg.
+
+  War der Mod-Loader schon vor diesem Paket installiert, bleibt er, wo er ist:
+  Er trägt vielleicht andere Mods.
+
+
+WAS INSTALLIERT WIRD, UND WOHER
+
+  Alles im Spielordner, nirgends sonst.
+
+  MelonLoader v0.7.3      der Mod-Loader, der das alles laufen lässt. Open
+                          Source, Apache-2.0, aus seinen GitHub-Releases.
+                          Bleibt unberührt, wenn er schon installiert ist.
+
+  .NET-6.0.36-Laufzeit    worauf MelonLoader läuft, entpackt nach
+                          <Spiel>\dotnet - nur, wenn dein System kein .NET 6
+                          hat. Von Microsoft.
+
+  WetReality.XRStart.dll  die Mod selbst, nach <Spiel>\Mods.
+
+  Eine Einstellung in <Spiel>\UserData\Loader.cfg: Das Konsolenfenster von
+  MelonLoader wird ausgeblendet (siehe FÜR ENTWICKLER).
+
+  Beim ersten Spielstart danach lädt MelonLoader auch seine eigenen
+  Hilfsdateien. Das ist die Wartezeit von oben.
+
+
+BEKANNTE EINSCHRÄNKUNGEN
+
+  - Keine physischen VR-Interaktionen: kein Gürtel, keine Flaschen mit der Hand
+    greifen. Die Menüs des Spiels werden so benutzt, wie sie sind, im Headset
+    angezeigt.
+
+  - Linkshänder-Spiel funktioniert, ist aber weniger getestet als
+    Rechtshänder. Die Handlagen brauchen vielleicht die Griff-Kalibrierung oder
+    das Feintuning. Was sich falsch herum gespiegelt anfühlt, ist ein Fehler -
+    bitte melden.
+
+  - Die Ausrüstungsscheibe wirkt verzerrt, wenn man sie von der Seite ansieht.
+
+  - Das Inventar kann kurz aufblitzen.
+
+  - Die Menüs des Spiels schweben vor dir; sie sind nicht im Raum verankert.
+
+  - Startet VR nicht, das Spiel neu starten - in diesem Build gibt es keine
+    Taste, um es von Hand zu starten.
+
+
+WENN ETWAS SCHIEFGEHT
+
+  Das Log ist die erste Anlaufstelle:
+    <Spielordner>\MelonLoader\Latest.log
+
+  VR startet nicht:             erst die Headset-Software, dann das Spiel.
+  Die Pistole sitzt falsch:     im Spiel kalibrieren (freie Hand: Griff + X + Y)
+                                oder das Griff-Feintuning im Konfigurator.
+  Menüs zu groß oder zu nah:    Menügröße und -abstand im Konfigurator.
+  Rote Linie aus der Düse:      der Ziellaser - im Konfigurator abschalten.
+
+  Das Spiel startet gar nicht - kein Fenster, nichts im Log:
+    Install.cmd noch einmal starten. Es meldet, ob es die Laufzeit findet, und
+    setzt sie wieder ein, wenn nicht.
+
+  Für eine Fehlermeldung reichen meist Latest.log und was du gerade getan hast.
+
+
+FÜR ENTWICKLER
+
+  In diesem Build ist die Entwicklungstechnik abgeschaltet: die Diagnosezeilen
+  im Log, die Messpfade, die F-Tasten und die Cheats. Das ist eine Einstellung
+  in <Spielordner>\UserData\MelonPreferences.cfg, Kategorie
+  [WetReality_XRStart]:
+
+    DevMode = false
+
+  Auf true gesetzt, wirken die Einzelschalter wieder - DevHotkeys (F1-F11) und
+  DevCheats. DevMode deckelt sie nur; ihre gespeicherten Werte bleiben
+  unberührt.
+
+  Das Konsolenfenster von MelonLoader ist davon getrennt. Der Installer blendet
+  es aus mit
+
+    [console]
+    hide_console = true
+
+  in UserData\Loader.cfg. Zum Entwickeln auf false zurücksetzen; der
+  Deinstaller nimmt es so oder so zurück.
+
+  Quellcode: https://github.com/onetin84/Wet-Reality-XR-PWS1
+
+
+================================================================================
+  Inoffiziell. Nicht verbunden mit FuturLab oder Square Enix.
+
+  MelonLoader ist ein eigenes Open-Source-Projekt (Apache-2.0). Die .NET-
+  Laufzeit gehört Microsoft (MIT). Keines davon ist mit dieser Mod verbunden.
+================================================================================

@@ -118,6 +118,16 @@ $window.Height = $height
 $window.Show()
 $window.UpdateLayout()
 
+# Dieselbe Hoehenanpassung wie WetReality-Config.ps1 (Fit-WindowHeight), ohne
+# den WorkArea-Deckel: die Vorschau zeigt das ganze Fenster. Zweimal, weil der
+# wegfallende Scrollbalken die Breite und damit den Umbruch aendert.
+foreach ($pass in 1..2) {
+    $scroll = $window.FindName('SettingsScroll')
+    $height = [int][math]::Ceiling($window.ActualHeight + $scroll.ExtentHeight - $scroll.ViewportHeight)
+    $window.Height = $height
+    $window.UpdateLayout()
+}
+
 Write-Host "  rendering at $width x $height px, straight from the XAML"
 
 $visual = $window.Content

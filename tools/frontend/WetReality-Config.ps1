@@ -609,7 +609,6 @@ function Load-Settings {
     (Ctl 'MarkerSizeSlider').Value = [double](Read-CfgValue -Key 'TeleportMarkerSize' -Fallback '0.45')
 
     (Ctl 'SprayHapticsCheck').IsChecked = (Read-CfgValue -Key 'SprayHaptics' -Fallback 'true') -eq 'true'
-    (Ctl 'VrHandsCheck').IsChecked = (Read-CfgValue -Key 'ShowVrHands' -Fallback 'true') -eq 'true'
     (Ctl 'TeleportCheck').IsChecked = (Read-CfgValue -Key 'ComfortTeleport' -Fallback 'false') -eq 'true'
     # Comfort.cs (XRStart 1.23.0), PWS2 names and defaults.
     (Ctl 'SnapTurnCheck').IsChecked = (Read-CfgValue -Key 'SnapTurn' -Fallback 'false') -eq 'true'
@@ -742,7 +741,7 @@ foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
     (Ctl $name).Add_Click({ Update-Labels; Mark-Dirty })
 }
 
-foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
+foreach ($name in @('SprayHapticsCheck', 'TeleportCheck',
                     'GesturesCheck', 'HandHitCheck', 'OrangeHandsCheck',
                     'LaserCheck', 'MirrorCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
@@ -790,6 +789,27 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
     if (-not $script:Loading) { Update-Labels }
 })
 
+# KURZANLEITUNG - seit 1.34.0 wieder verdrahtet (Port aus PWS2). Beim Port
+# 1.19.1 blieb der Knopf ausgeblendet, weil es noch keine Anleitung gab; seit
+# 1.33.0 liegt sie im Paket, und README/LIESMICH verweisen auf diesen Knopf.
+# Folgt der Fenstersprache, faellt auf die englische Datei zurueck.
+(Ctl 'GuideButton').Add_Click({
+    $guide = Join-Path $script:Root 'QuickGuide.html'
+    if ($script:Language -eq 'de') {
+        $de = Join-Path $script:Root 'QuickGuide-de.html'
+        if (Test-Path -LiteralPath $de) { $guide = $de }
+    }
+
+    if (Test-Path -LiteralPath $guide) {
+        Start-Process -FilePath $guide
+    }
+    else {
+        [System.Windows.MessageBox]::Show(
+            "$(T 'The quick guide is not available yet.')`n`n$(T 'Expected at'): $guide",
+            'Wet Reality') | Out-Null
+    }
+})
+
 (Ctl 'LaunchButton').Add_Click({
     # Warn first, then start - PWS2 rule: unsaved changes would not apply.
     if ($script:Dirty) {
@@ -821,7 +841,9 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
             'UiScale'            = Format-Float (Ctl 'UiScaleSlider').Value
             'UiDistance'         = Format-Float ([Math]::Round((Ctl 'UiDistanceSlider').Value, 2))
             'InteractionRange'   = Format-Float ([Math]::Round((Ctl 'ReachSlider').Value, 2))
-            'ShowVrHands'        = Format-Bool ([bool](Ctl 'VrHandsCheck').IsChecked)
+            # Kein Haken mehr (Nutzer 28.09.): die VR-Haende sind immer an. Fest
+            # geschrieben statt weggelassen, damit ein altes "false" repariert wird.
+            'ShowVrHands'        = 'true'
             'TeleportMarkerSize' = Format-Float ([Math]::Round((Ctl 'MarkerSizeSlider').Value, 2))
             'ComfortTeleport'    = Format-Bool ([bool](Ctl 'TeleportCheck').IsChecked)
             'SnapTurn'           = Format-Bool ([bool](Ctl 'SnapTurnCheck').IsChecked)
@@ -874,7 +896,11 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
 $found = $GamePath
 if (-not $found) { $found = Find-GameFolder }
 
-if (Set-Status -Path $found) { Load-Settings } else { $script:Loading = $false }
+# Ohne Installation stehen die Vorgaben aus der XAML (Value, IsChecked,
+# SelectedIndex = die Vorgaben der Mod); Update-Labels schreibt ihre Zahlen
+# dazu. Vorher standen dort leere Felder und Regler am Minimum - gelesen als
+# "20 % und 0,8 m sind eingestellt" (Nutzer 28.09.).
+if (Set-Status -Path $found) { Load-Settings } else { $script:Loading = $false; Update-Labels }
 
 # THE WINDOW MUST NOT BE TALLER THAN THE SCREEN IT OPENS ON.
 #
@@ -903,6 +929,45 @@ $work = [System.Windows.SystemParameters]::WorkArea.Height
 if ($work -gt 400 -and $window.Height -gt $work - 40) {
     $window.Height = $work - 40
 }
+
+# DIE HOEHE FOLGT DEM INHALT - seit 1.34.0, gemeldet als "grosse Luecken".
+#
+# Die 900 px aus der XAML sind nur noch der erste Wurf. Sobald das Fenster
+# gezeichnet ist, sagt die ScrollViewer, wie weit Inhalt und Sichtflaeche
+# auseinanderliegen: positiv = es muesste gescrollt werden, negativ = unter
+# den Feldern steht leere Flaeche. Um genau diesen Betrag wird das Fenster
+# korrigiert und als MaxHeight festgehalten, damit Aufziehen keine Luecke mehr
+# erzeugt. Der WorkArea-Deckel oben gilt weiter; darunter scrollt es wie bisher.
+#
+# NACHGEFUEHRT, wenn sich der INHALT aendert (Sprachwechsel, andere Breite und
+# damit anderer Umbruch) - nicht bei ScrollChanged, sonst liesse sich das
+# Fenster von Hand nicht mehr verkleinern. SizeToContent ist keine Alternative,
+# siehe MainWindow.xaml: das Hintergrundbild wuerde die Hoehe bestimmen.
+function Fit-WindowHeight {
+    param([switch] $Center)
+
+    $scroll = Ctl 'SettingsScroll'
+    if (-not $scroll -or $scroll.ViewportHeight -le 0) { return }
+
+    $fit = $window.ActualHeight + ($scroll.ExtentHeight - $scroll.ViewportHeight)
+    if ($work -gt 400) { $fit = [math]::Min($fit, $work - 40) }
+    $fit = [math]::Max($fit, $window.MinHeight)
+
+    if ([math]::Abs($fit - $window.ActualHeight) -lt 1 -and $window.MaxHeight -eq $fit) { return }
+
+    $window.MaxHeight = $fit
+    $window.Height = $fit
+
+    if ($Center) {
+        $area = [System.Windows.SystemParameters]::WorkArea
+        if ($area.Height -gt 400) { $window.Top = $area.Top + ($area.Height - $fit) / 2 }
+    }
+}
+
+$window.Add_ContentRendered({
+    Fit-WindowHeight -Center
+    (Ctl 'SettingsScroll').Content.Add_SizeChanged({ Fit-WindowHeight })
+})
 
 # DIE KONSOLE WEG - Abschnitt 130, und die Stelle ist der Entwurf.
 #

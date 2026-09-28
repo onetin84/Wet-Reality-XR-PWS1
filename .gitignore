@@ -34,6 +34,11 @@ backups/
 tools/*.py
 tools/*.pl
 
+# Ausgaben von tools/disasm.py: disassemblierte Methoden aus GameAssembly.dll.
+# Messmaterial, und es ist Code von FuturLab - gehoert nicht in ein oeffentliches
+# Repo.
+tools/disasm_*.txt
+
 # Bei jedem Lauf von render-ui.ps1 neu erzeugt.
 tools/ui-preview-*.png
 
