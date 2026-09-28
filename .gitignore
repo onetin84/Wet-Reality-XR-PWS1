@@ -50,6 +50,8 @@ Directory.Build.props
 
 # ----------------------------------------------------------- lokale Sitzung
 .claude/
+# Arbeitsanweisungen fuer Claude Code - lokale Pfade, gehoert nicht ins oeffentliche Repo.
+CLAUDE.md
 start_claude.ps1
 
 # ------------------------------------------------------------------ Windows
