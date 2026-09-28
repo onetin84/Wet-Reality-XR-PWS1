@@ -68,6 +68,11 @@ $script:German = @{
     'Vignette while moving' = 'Vignette bei Bewegung'
     'Snap angle' = 'Sprungwinkel'
     'Vignette strength' = 'Vignettenstärke'
+    'Gestures (shoulder, hip, washer)' = 'Gesten (Schulter, Hüfte, Pistole)'
+    'Orange gloves' = 'Orange Handschuhe'
+    'Spraying your free hand makes it vibrate' = 'Strahl auf die freie Hand vibriert'
+    'Black out while a level loads' = 'Beim Laden eines Levels abblenden'
+    'Immersion hold' = 'Immersion halten'
     'none' = 'keine'
 
     # ---------------------------------------------------------------- grip
@@ -123,8 +128,8 @@ $script:German = @{
     'Right eye' = 'Rechtes Auge'
     'Both eyes' = 'Beide Augen'
     'Off' = 'Aus'
-    'Teleport: left stick forward teleports from the left hand; walking is off.' =
-        'Teleport: Linker Stick nach vorn teleportiert aus der linken Hand, Gehen ist aus.'
+    'Teleport: left stick forward teleports from the left hand; walking is off. Hold the menu button to hide the game UI (immersion); a short press opens the pause menu.' =
+        'Teleport: Linker Stick nach vorn teleportiert aus der linken Hand, Gehen ist aus. Menütaste halten blendet die Spiel-UI aus (Immersion), kurz tippen öffnet die Pause.'
     'DEVELOPMENT' = 'ENTWICKLUNG'
     'Test aids while the mod is being built. Cheats write money into the save game - the original is backed up in savegame-backup, tools/savegame-switch.ps1 switches back.' =
         'Testhilfen während der Entwicklung. Cheats schreiben Geld in den Spielstand - das Original liegt gesichert in savegame-backup, tools/savegame-switch.ps1 schaltet zurück.'

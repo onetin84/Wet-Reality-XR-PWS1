@@ -555,6 +555,9 @@ public sealed partial class XRStart
             // ERST schliessen, dann die Sperre - das offene Inventar setzt selbst
             // BlockedInput (1.14.0: Y konnte es nicht mehr schliessen).
             if (pi.CheckAndCloseInventoryMenuIfOpen()) { btnEvents.Add("Y kurz: Inventar geschlossen"); return; }
+            // Im Menue ist Y ZURUECK (1.31.0, PWS2 "Y im Menue"): ESC gibt es sonst nur
+            // an der Tastatur. Nie oeffnen, nur schliessen (MenuBack.cs).
+            if (menuActive) { PressMenuBack(); return; }
             if (pi.BlockedInput && !menuActive) { btnEvents.Add("Y kurz: gesperrt (BlockedInput)"); return; }
             if (gameState == null) gameState = UnityEngine.Object.FindObjectOfType<GameStateManager>();
             var cur = gameState == null ? null : gameState.StateMachine?.Current;

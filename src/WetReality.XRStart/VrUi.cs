@@ -120,7 +120,7 @@ public sealed partial class XRStart
     private void EnsureUi()
     {
         if (!ResolveUiRoot()) return;
-        var cam = Camera.main;
+        var cam = UiCamera;   // beim Laden die Menuekamera (MenuCamera.cs)
         if (cam == null) return;   // Hauptmenue: keine 3D-Kamera
         try
         {

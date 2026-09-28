@@ -10,7 +10,8 @@
 // (Material + Shader), Nebel, XRSettings.stereoRenderingMode, dazu bis zu zehn
 // Renderer mit "sky" im Objekt- oder Shadernamen.
 //
-// ABHILFE SkyFix (cfg): "solid" (Vorgabe) - die XR-Kamera loescht mit SkyColor,
+// ABHILFE SkyFix (cfg): "cubemap" (Vorgabe seit 1.25.0, SkyCube.cs) - Spielhimmel
+// flach in eine Wuerfeltextur, Rueckfall solid; "solid" - die XR-Kamera loescht mit SkyColor,
 // keine Schlieren, einfarbiger Himmel; "skybox" - clearFlags Skybox erzwungen;
 // "off" - wie das Spiel. F2 schaltet live durch (off -> solid -> skybox), jeder
 // Wechsel im Log. Nur mit laufendem XR; XR-Stopp stellt den Spielwert her.
@@ -22,8 +23,8 @@ namespace WetReality.XRStart;
 
 public sealed partial class XRStart
 {
-    private static readonly string[] SkyModes = { "off", "solid", "skybox" };
-    private string skyMode = "solid";
+    private static readonly string[] SkyModes = { "off", "solid", "skybox", "cubemap" };
+    private string skyMode = "cubemap";
     private Color skyColor = new(0.55f, 0.72f, 0.92f, 1f);
     private Camera? skyCam;
     private CameraClearFlags skyOrigFlags;
@@ -34,8 +35,8 @@ public sealed partial class XRStart
 
     private void InitSky()
     {
-        skyMode = (prefSkyFix.Value ?? "solid").Trim().ToLowerInvariant();
-        if (Array.IndexOf(SkyModes, skyMode) < 0) skyMode = "solid";
+        skyMode = (prefSkyFix.Value ?? "cubemap").Trim().ToLowerInvariant();
+        if (Array.IndexOf(SkyModes, skyMode) < 0) skyMode = "cubemap";
         var v = ParseVec(prefSkyColor.Value, new Vector3(0.55f, 0.72f, 0.92f), "SkyColor");
         skyColor = new Color(v.x, v.y, v.z, 1f);
     }
@@ -58,6 +59,8 @@ public sealed partial class XRStart
 
         var cam = Camera.main;
         if (cam == null) return;
+        // Die Menuekamera (Hauptmenue) hat ihren eigenen Grund - kein Himmel (1.25.0).
+        if (menuCam != null && cam.Pointer == menuCam.Pointer) { RestoreSky("Menuekamera"); return; }
         if (skyCam != null && skyCam.Pointer != cam.Pointer) RestoreSky("neue Kamera");
         if (cam.Pointer != skyMeasuredFor) { skyMeasuredFor = cam.Pointer; MeasureSky(cam); }
 
@@ -71,9 +74,12 @@ public sealed partial class XRStart
                 skyOrigColor = cam.backgroundColor;
                 skyApplied = true;
             }
+            // cubemap: gelingt der Bau nicht, gilt solid (Rueckfall, im Log).
+            bool cube = skyMode == "cubemap" && EnsureSkyCube(cam);
+            // Der Wuerfel (SkyCube.cs) zeichnet den Himmel selbst - die Kamera loescht fest.
             var want = skyMode == "skybox" ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
-            if (cam.clearFlags != want) { cam.clearFlags = want; LoggerInstance.Msg($"HIMMEL: '{cam.name}' clearFlags {skyOrigFlags} -> {want}"); }
-            if (skyMode == "solid" && cam.backgroundColor != skyColor) cam.backgroundColor = skyColor;
+            if (cam.clearFlags != want) { cam.clearFlags = want; LoggerInstance.Msg($"HIMMEL: '{cam.name}' clearFlags {skyOrigFlags} -> {want}{(cube ? " (Wuerfeltextur)" : "")}"); }
+            if (want == CameraClearFlags.SolidColor && cam.backgroundColor != skyColor) cam.backgroundColor = skyColor;
         }
         catch (Exception e) { LoggerInstance.Warning("HIMMEL: " + e.GetType().Name + ": " + e.Message); }
     }
@@ -84,6 +90,7 @@ public sealed partial class XRStart
         try
         {
             if (skyCam != null) { skyCam.clearFlags = skyOrigFlags; skyCam.backgroundColor = skyOrigColor; }
+            StopSkyCube();
             LoggerInstance.Msg($"HIMMEL: zurueck ({why}) - clearFlags {skyOrigFlags}");
         }
         catch { }

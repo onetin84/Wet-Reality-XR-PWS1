@@ -51,6 +51,8 @@ public sealed partial class XRStart
     private MelonPreferences_Entry<bool> prefComfortTeleport = null!;
     private MelonPreferences_Entry<float> prefTeleportJumpSpeed = null!;
     private MelonPreferences_Entry<bool> prefTeleportSlopeWalk = null!;
+    private MelonPreferences_Entry<bool> prefLadderTeleport = null!;
+    private MelonPreferences_Entry<float> prefLadderTopOffset = null!;
     private MelonPreferences_Entry<float> prefTurnSpeed = null!, prefHapticIntensity = null!, prefUiScale = null!, prefUiDistance = null!;
     private MelonPreferences_Entry<bool> prefSprayHaptics = null!;
     private MelonPreferences_Entry<string> prefHandRPos = null!, prefHandRRot = null!, prefHandLPos = null!, prefHandLRot = null!;
@@ -74,13 +76,18 @@ public sealed partial class XRStart
         handRRot = ParseVec(prefHandRRot.Value, new Vector3(-15f, 0f, -80f), "HandRightRot");
         handLPos = ParseVec(prefHandLPos.Value, new Vector3(-0.04f, 0f, -0.08f), "HandLeftPos");
         handLRot = ParseVec(prefHandLRot.Value, new Vector3(70f, 20f, 90f), "HandLeftRot");
-        prefSkyFix = cat.CreateEntry("SkyFix", "solid", description: "Himmel im Headset: solid (feste Farbe, keine Schlieren), skybox (erzwingen), off (wie das Spiel)");
+        prefSkyFix = cat.CreateEntry("SkyFix", "cubemap", description: "Himmel im Headset: cubemap (Spielhimmel mit Wolken ueber eine Wuerfeltextur, Rueckfall solid), solid (feste Farbe), skybox (erzwingen - schmiert), off (wie das Spiel)");
         prefSkyColor = cat.CreateEntry("SkyColor", "0.55,0.72,0.92", description: "Himmelsfarbe fuer SkyFix=solid, r,g,b 0..1");
         InitSky();
         InitPointerStyle(cat);   // PointerColor & Teleportziel (PointerStyle.cs)
         InitMenuCamera(cat);     // Hauptmenue im Headset (MenuCamera.cs)
         InitSplash(cat);         // Startlogo im Headset (Splash.cs)
         InitComfort(cat);        // Snap-Turn, Vignette, Teleport-Blende (Comfort.cs)
+        InitImmersion(cat);      // Menue halten = Spiel-UI aus/an (Immersion.cs)
+        InitGestures(cat);       // Schulter/Pistole + Griff (Gestures.cs)
+        InitSpawnYaw(cat);       // Spawn-Ausrichtung messen und uebernehmen (SpawnYaw.cs)
+        InitHandSpray(cat);      // Strahl auf die freie Hand (HandSpray.cs)
+        InitHandTint(cat);       // orange Handschuhe (HandTint.cs)
         // Fuer den Konfigurator (tools/frontend), Namen wie PWS2; Vorgaben = die frueheren festen Werte.
         prefTurnSpeed = cat.CreateEntry("TurnSpeed", 90f, description: "Grad pro Sekunde fuer das Drehen mit dem rechten Stick");
         prefSprayHaptics = cat.CreateEntry("SprayHaptics", true, description: "Dauervibration rechts beim Spruehen (Staerke nach Duese, Washer, Oberflaeche)");
@@ -91,6 +98,8 @@ public sealed partial class XRStart
         prefComfortTeleport = cat.CreateEntry("ComfortTeleport", false, description: "Komfort: linker Stick nach vorn teleportiert aus der linken Hand und ersetzt das Gehen. Der Ziel-Teleport auf der Pistolenhand wirkt immer.");
         prefTeleportJumpSpeed = cat.CreateEntry("TeleportJumpSpeed", 7f, description: "m/s. Waagerechtes Tempo der Sprungparabel, die die Teleportweite begrenzt (PWS2 gemessen: 7,0 mit Sprint)");
         prefTeleportSlopeWalk = cat.CreateEntry("TeleportSlopeWalk", true, description: "Treppe/Rampe als Weg (PWS2 Abschnitt 159): liegt das Ziel ueber der Kantengrenze, wird der Boden vom Fuss dorthin in 0,18-m-Schritten abgegangen; jede Stufe <= 0,45 m hoch ist ein Weg.");
+        prefLadderTeleport = cat.CreateEntry("LadderTeleport", true, description: "Auf eine aufgestellte Leiter gezielt = oben ankommen statt an der Sprosse (PWS2); die eine Ausnahme von der Hoehengrenze.");
+        prefLadderTopOffset = cat.CreateEntry("LadderTopOffset", 0.35f, description: "Meter weg von der Leiter oben, damit man auf dem Dach steht und nicht an der Sprosse haengt.");
         LoggerInstance.Msg($"TESTUMGEBUNG: AutoStart={prefAutoStart.Value} SkipLoadingContinue={prefSkipContinue.Value} DevCheats={prefCheats.Value} DesktopMirror={prefMirror.Value} InteractionRange={prefInteractionRange.Value:F1} ShowVrHands={prefHands.Value} HandRight {prefHandRPos.Value} / {prefHandRRot.Value} HandLeft {prefHandLPos.Value} / {prefHandLRot.Value} SkyFix={prefSkyFix.Value} SkyColor={prefSkyColor.Value} ComfortTeleport={prefComfortTeleport.Value} TeleportJumpSpeed={prefTeleportJumpSpeed.Value:F1} TeleportSlopeWalk={prefTeleportSlopeWalk.Value} PointerColor={prefPointerColor.Value} PointerAlpha={prefPointerAlpha.Value:F2} TurnSpeed={prefTurnSpeed.Value:F0} SprayHaptics={prefSprayHaptics.Value} HapticIntensity={prefHapticIntensity.Value:F2} UiScale={prefUiScale.Value:F4} UiDistance={prefUiDistance.Value:F2}");
         cheatsOn = prefCheats.Value;
         skipContinueOn = prefSkipContinue.Value;

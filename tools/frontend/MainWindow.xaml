@@ -11,9 +11,9 @@
     <!--
         PWS1 PORT (XRStart 1.18.0): taken from the PWS2 configurator and cut down
         to what the PWS1 mod actually has. Removed: washer hand (PWS1 is right
-        hand only), orange gloves, aiming laser, comfort preset, grip
+        hand only), aiming laser, comfort preset, grip
         fine-tuning, the cat launch joke. Added: pickup reach, desktop mirror.
-        Snap turn and vignette came back with XRStart 1.23.0. The DEVELOPMENT
+        Snap turn and vignette came back with XRStart 1.23.0, orange gloves with 1.30.0. The DEVELOPMENT
         panel (AutoStart, skip loading screen, cheats) is gone again: players
         get only what they need, those three live in the cfg. A control
         without an effect is worse than none.
@@ -435,6 +435,13 @@
                                      auf 1080p schon an der Arbeitsflaeche. -->
                                 <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
                                           Content="Show VR hands" />
+                                <!-- XRStart 1.30.0: OrangeHands wie PWS2. -->
+                                <CheckBox x:Name="OrangeHandsCheck" Margin="0,0,0,8"
+                                          Content="Orange gloves" />
+                                <!-- XRStart 1.27.0/1.29.0: Koerperzonen-Gesten (GestureZones). -->
+                                <CheckBox x:Name="GesturesCheck" Margin="0,0,0,8"
+                                          Content="Gestures (shoulder, hip, washer)"
+                                          ToolTip="Shoulder + right grip = next washer, hip + right grip = soap, left hand at the washer + left grip = extension" />
 
                                 <!-- PWS1: how far the left hand reaches for objects to
                                      pick up (PWS2 AimInteractionRange, 5 m). -->
@@ -454,6 +461,9 @@
 
                                 <CheckBox x:Name="SprayHapticsCheck" Margin="0,4,0,8"
                                           Content="Vibration while spraying" />
+                                <!-- XRStart 1.30.0: HandHit wie PWS2. -->
+                                <CheckBox x:Name="HandHitCheck" Margin="0,0,0,8"
+                                          Content="Spraying your free hand makes it vibrate" />
 
                                 <Grid Margin="0,0,0,4">
                                     <Grid.ColumnDefinitions>
@@ -657,9 +667,25 @@
                                     <TextBlock x:Name="VignetteStrengthValue" Grid.Column="2"
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
+                                <!-- XRStart 1.24.x: LoadingBlackout, MenuHoldSeconds (Immersion). -->
+                                <CheckBox x:Name="LoadingBlackoutCheck" Margin="0,8,0,8"
+                                          Content="Black out while a level loads" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Immersion hold" />
+                                    <Slider x:Name="MenuHoldSlider" Grid.Column="1"
+                                            Minimum="0.3" Maximum="1.5" />
+                                    <TextBlock x:Name="MenuHoldValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,6,0,0"
-                                           Text="Teleport: left stick forward teleports from the left hand; walking is off." />
+                                           Text="Teleport: left stick forward teleports from the left hand; walking is off. Hold the menu button to hide the game UI (immersion); a short press opens the pause menu." />
                             </StackPanel>
                         </Border>
 

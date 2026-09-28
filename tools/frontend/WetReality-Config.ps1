@@ -616,6 +616,12 @@ function Load-Settings {
     (Ctl 'VignetteCheck').IsChecked = (Read-CfgValue -Key 'ComfortVignette' -Fallback 'false') -eq 'true'
     (Ctl 'SnapAngleSlider').Value = [double](Read-CfgValue -Key 'SnapAngle' -Fallback '45')
     (Ctl 'VignetteStrengthSlider').Value = [double](Read-CfgValue -Key 'VignetteStrength' -Fallback '0.7')
+    # Gestures.cs, HandSpray.cs, MenuCamera.cs, Immersion.cs (XRStart 1.24-1.30).
+    (Ctl 'GesturesCheck').IsChecked = (Read-CfgValue -Key 'GestureZones' -Fallback 'true') -eq 'true'
+    (Ctl 'HandHitCheck').IsChecked = (Read-CfgValue -Key 'HandHit' -Fallback 'true') -eq 'true'
+    (Ctl 'OrangeHandsCheck').IsChecked = (Read-CfgValue -Key 'OrangeHands' -Fallback 'true') -eq 'true'
+    (Ctl 'LoadingBlackoutCheck').IsChecked = (Read-CfgValue -Key 'LoadingBlackout' -Fallback 'true') -eq 'true'
+    (Ctl 'MenuHoldSlider').Value = [double](Read-CfgValue -Key 'MenuHoldSeconds' -Fallback '0.6')
     # AutoStart, SkipLoadingContinue and DevCheats are not player options any
     # more (user 28.09.): not read and never written - the cfg keeps its values.
 
@@ -643,6 +649,8 @@ function Update-Labels {
     (Ctl 'ReachValue').Text = "$((Format-Float ([Math]::Round((Ctl 'ReachSlider').Value, 1)))) m"
     (Ctl 'MarkerSizeValue').Text = "$([int]((Ctl 'MarkerSizeSlider').Value * 100)) cm"
 
+    (Ctl 'MenuHoldValue').Text = "$((Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1)))) s"
+
     $deg = [char]0x00B0
     (Ctl 'SnapAngleValue').Text = "$([int](Ctl 'SnapAngleSlider').Value)$deg"
     # At 0 the word says the vignette is off - "0 %" reads like a measurement (PWS2).
@@ -665,7 +673,7 @@ function Mark-Dirty {
 
 foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider', 'UiScaleSlider',
                     'UiDistanceSlider', 'ReachSlider', 'MarkerSizeSlider',
-                    'SnapAngleSlider', 'VignetteStrengthSlider')) {
+                    'SnapAngleSlider', 'VignetteStrengthSlider', 'MenuHoldSlider')) {
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
 }
 
@@ -674,7 +682,8 @@ foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
     (Ctl $name).Add_Click({ Update-Labels; Mark-Dirty })
 }
 
-foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck')) {
+foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
+                    'GesturesCheck', 'HandHitCheck', 'LoadingBlackoutCheck', 'OrangeHandsCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
@@ -741,6 +750,11 @@ foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck')) {
             'SnapAngle'          = Format-Float ([Math]::Round((Ctl 'SnapAngleSlider').Value))
             'ComfortVignette'    = Format-Bool ([bool](Ctl 'VignetteCheck').IsChecked)
             'VignetteStrength'   = Format-Float ([Math]::Round((Ctl 'VignetteStrengthSlider').Value, 2))
+            'GestureZones'       = Format-Bool ([bool](Ctl 'GesturesCheck').IsChecked)
+            'HandHit'            = Format-Bool ([bool](Ctl 'HandHitCheck').IsChecked)
+            'OrangeHands'        = Format-Bool ([bool](Ctl 'OrangeHandsCheck').IsChecked)
+            'LoadingBlackout'    = Format-Bool ([bool](Ctl 'LoadingBlackoutCheck').IsChecked)
+            'MenuHoldSeconds'    = Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1))
             # As names in quotes, the way MelonPreferences keeps a string entry.
             'PointerColor'       = "`"$($script:PointerColors[[Math]::Max(0, (Ctl 'PointerColorBox').SelectedIndex)])`""
             'DesktopMirror'      = "`"$($script:MirrorModes[[Math]::Max(0, (Ctl 'MirrorBox').SelectedIndex)])`""

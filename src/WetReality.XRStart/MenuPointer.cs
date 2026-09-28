@@ -196,7 +196,7 @@ public sealed partial class XRStart
         try
         {
             var hmd = InputSystem.GetDevice<XRHMD>();
-            var cam = Camera.main;
+            var cam = UiCamera;
             if (hmd == null || r == null || cam == null || !r.isTracked.isPressed) { HideMenuLine(); return; }
 
             var hmdPos = hmd.centerEyePosition.ReadValue();
@@ -404,7 +404,7 @@ public sealed partial class XRStart
         var p = menuPed;
         try
         {
-            var cam = Camera.main;
+            var cam = UiCamera;
             if (cam != null) { var sp = cam.WorldToScreenPoint(world); p.position = new Vector2(sp.x, sp.y); p.pressPosition = p.position; }
         }
         catch { }

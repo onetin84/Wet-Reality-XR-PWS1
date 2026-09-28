@@ -252,7 +252,8 @@ public sealed partial class XRStart
             Inventory(l, "links", "thumbstick", "triggerPressed", "primaryButton", "thumbstickClicked", "menu");
             DriveWheelAndY(pi, r, l);   // R3 Waehlscheibe, Y Inventar/Washer (Wheel.cs)
 
-            if (Edge(r, "R", "primaryButton") && Free(pi, "A Springen"))
+            // Im Komfortmodus springt A nicht (PWS2: Motion Sickness, kein Gehen, dem ein Sprung diente).
+            if (Edge(r, "R", "primaryButton") && !tpComfortActive && Free(pi, "A Springen"))
             {
                 pi.Jump?.Invoke();
                 btnEvents.Add("A: Jump");
@@ -288,11 +289,17 @@ public sealed partial class XRStart
                 }
             }
 
+            UpdateGestureZones(r, l);   // Schulter/Pistole dieses Frames (Gestures.cs)
+
             if (Edge(r, "R", "gripPressed") && !wheelOpen)   // offene Scheibe: Griff blaettert (Wheel.cs)
             {
-                fireLatched = !fireLatched;
-                btnEvents.Add($"Griff rechts: Dauerspruehen {(fireLatched ? "AN" : "AUS")}");
-                Buzz(true, fireLatched ? "Dauerspruehen an" : "Dauerspruehen aus");
+                // PWS2: laeuft der Dauerstrahl, raeumt der Griff NUR ihn - keine Geste.
+                if (fireLatched || !TryBodyGesture(pi))
+                {
+                    fireLatched = !fireLatched;
+                    btnEvents.Add($"Griff rechts: Dauerspruehen {(fireLatched ? "AN" : "AUS")}");
+                    Buzz(true, fireLatched ? "Dauerspruehen an" : "Dauerspruehen aus");
+                }
             }
 
             if (Edge(l, "L", "triggerPressed") && Free(pi, "Trigger links Duese drehen"))
@@ -317,7 +324,8 @@ public sealed partial class XRStart
                 }
             }
 
-            if (Edge(l, "L", "gripPressed") && !pi.CarryItem && !wheelOpen)
+            // Beim Tragen bleibt der Griff Dreh-Modifikator; an der Pistole = Verlaengerung (Gestures.cs).
+            if (Edge(l, "L", "gripPressed") && !pi.CarryItem && !wheelOpen && !TryWasherGesture(pi))
                 HighlightDirt();
 
             if (Edge(l, "L", "thumbstickClicked") && Free(pi, "L3 Verlaengerung"))
@@ -326,11 +334,8 @@ public sealed partial class XRStart
                 btnEvents.Add("L3: SwitchExtension(1)");
             }
 
-            if (Edge(l, "L", "menu"))
-            {
-                pi.m_pauseAction?.Invoke();
-                btnEvents.Add("Menue: m_pauseAction");
-            }
+            // Tippen = Pause beim LOSLASSEN, Halten = Immersionsmodus (Immersion.cs).
+            MenuButton(pi, l);
         }
         catch (Exception e)
         {

@@ -145,8 +145,8 @@ public sealed partial class XRStart
             }
             var go = h.Result;
             handHandle = null;
-            if (handStep == 1) { handL = go; go.name = "WetReality_HandL"; DescribeHand(go, "links"); handStep = 2; }
-            else { handR = go; go.name = "WetReality_HandR"; DescribeHand(go, "rechts"); FixMirrored(go); handStep = 3; LoggerInstance.Msg("HAENDE: beide geladen"); }
+            if (handStep == 1) { handL = go; go.name = "WetReality_HandL"; DescribeHand(go, "links"); TintHand(go, "links"); handStep = 2; }
+            else { handR = go; go.name = "WetReality_HandR"; DescribeHand(go, "rechts"); FixMirrored(go); TintHand(go, "rechts"); handStep = 3; LoggerInstance.Msg("HAENDE: beide geladen"); }
         }
         catch (Exception e)
         {

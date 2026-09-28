@@ -154,6 +154,18 @@
 // 1.22.0: Hauptmenue im Headset - eigene Menuekamera ohne Spielerkamera (MenuCamera.cs), Autostart schon im Hauptmenue.
 // 1.22.1: Menuekamera rendert auch Ebene 0 (Zeigestrahl); Startlogo im Headset wie PWS2 (Splash.cs).
 // 1.23.0: Komfort wie PWS2 - Snap-Turn, Vignette, Teleport-Blende (Comfort.cs).
+// 1.24.0: Immersionsmodus wie PWS2 - Menue halten 0,6 s = Spiel-UI aus/an, Tippen = Pause beim Loslassen (Immersion.cs).
+// 1.24.1: Spawn-Blick des Spiels uebernommen (UpdateLookDirection-Postfix, seit 1.16.0 verloren); Welt beim Laden schwarz (Menuekamera, LoadingBlackout).
+// 1.24.2: Menuekamera beim Laden nur UI-Ebene (Ebene 0 zeigte das halbe Level), Startlogo auf Ebene 5.
+// 1.24.3: Startlogo links/rechts je 6 % beschnitten (SplashCropX), passt in den Tablet-Rahmen.
+// 1.25.0: Himmel mit Wolken - Spielhimmel flach in eine Wuerfeltextur, stereofest als Skybox/Cubemap (SkyCube.cs, SkyFix "cubemap").
+// 1.25.1: Skybox/Cubemap fehlt im Build - Himmel jetzt auf sechs Sprites/Default-Flaechen um die Kamera.
+// 1.26.0: Teleport auf eine aufgestellte Leiter = oben ankommen (Port PWS2 TryLadderTop, PWS.Ladder).
+// 1.27.0: Gesten wie PWS2 - Schulter + Griff rechts = Washer, freie Hand an der Pistole + Griff links = Verlaengerung (Gestures.cs).
+// 1.28.0: Spawn-Ausrichtung aus MoveToSpawnPointAtBoot gemessen und in bodyYaw uebernommen (SpawnYaw.cs).
+// 1.29.0: Hueftgeste = Seife aus dem Holster (Seifenduese an/zurueck, UpdateNozzle; Gestures.cs).
+// 1.30.0: Strahl auf die freie Hand (Collider, Strahlmaske, Vibration; HandSpray.cs), orange Handschuhe (HandTint.cs).
+// 1.31.0: Y im Menue = Zurueck (Popup schliessen / Tablet zurueck / Tablet zu; MenuBack.cs), A im Komfortmodus aus.
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -171,7 +183,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.23.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.31.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -262,7 +274,7 @@ public sealed partial class XRStart : MelonMod
     private void PatchCameraController()
     {
         PatchOne(nameof(PlayerCameraController.UpdateRotation), nameof(RotationPrefix), nameof(RotationPostfix));
-        PatchOne(nameof(PlayerCameraController.UpdateLookDirection), nameof(LookPrefix), null);
+        PatchOne(nameof(PlayerCameraController.UpdateLookDirection), nameof(LookPrefix), nameof(LookPostfix));   // 1.24.1: Spawn-Blick uebernehmen
     }
 
     private void PatchOne(string method, string prefix, string? postfix)
@@ -321,6 +333,45 @@ public sealed partial class XRStart : MelonMod
         ApplyLookPitch(__instance);   // PWS2 Bit 512, nur mit Pistole und F4
         if (!sampleOpen || Time.frameCount != sampleFrame) return;
         sPost = ReadLook(__instance);
+    }
+
+    // DER SPAWN-BLICK (1.24.1). UpdateLookDirection setzt den Blick ABSOLUT
+    // (disassembliert 0x9E12F0: HorizontalLookRotation = h, HeadTurn/PlayerCamera
+    // localEuler), gerufen indirekt ueber MoveToSpawnPointAtBoot
+    // .MoveToSpawnPositionClientRpc(position, orientation). Seit dem schnellen
+    // Autostart (1.16.0) laeuft der Kopfschreiber VOR dem Spawn: bodyYaw wurde
+    // 0,0 uebernommen (Logs 1.16.0-1.23.0, vorher 140-350), das RotationPostfix
+    // sieht nur Deltas, und der naechste Kopfschreibvorgang ueberschrieb den
+    // Spawn-Blick - man stand 180 Grad verdreht (Nutzer: Blick auf die Strasse
+    // statt aufs Haus). Jetzt: ein absoluter Blick des Spiels wird Koerperwinkel,
+    // minus die aktuelle HMD-Gierung, damit der Blick GENAU dorthin zeigt.
+    // Schutz: mehr als 5 Uebernahmen in 2 s = ein Aufrufer je Frame, dann aus.
+    private static int lookAdoptCount;
+    private static float lookAdoptWindow, lookAdoptOff = -1f;
+    internal static string lookAdoptLog = "";
+
+    private static void LookPostfix(float horizontalLook)
+    {
+        if (!trackBody) return;   // vor der Uebernahme liest DriveHead HorizontalLookRotation selbst
+        float now = Time.unscaledTime;
+        if (lookAdoptOff >= 0f) return;
+        if (now - lookAdoptWindow > 2f) { lookAdoptWindow = now; lookAdoptCount = 0; }
+        if (++lookAdoptCount > 5) { lookAdoptOff = now; lookAdoptLog = "KOPF-SCHREIBEN: UpdateLookDirection kommt >5x in 2 s - Uebernahme AUS (sonst stuende die Drehung)"; return; }
+        float hmdYaw = HmdYawNow();
+        float before = bodyYaw;
+        bodyYaw = Mathf.Repeat(horizontalLook - hmdYaw, 360f);
+        haveRead = false;
+        lookAdoptLog = $"KOPF-SCHREIBEN: Spiel setzt Blick {horizontalLook:F1} (UpdateLookDirection) - bodyYaw {before:F1} -> {bodyYaw:F1} (HMD-Gierung {hmdYaw:F1})";
+    }
+
+    private static float HmdYawNow()
+    {
+        try
+        {
+            var hmd = InputSystem.GetDevice<XRHMD>();
+            return hmd == null ? 0f : hmd.centerEyeRotation.ReadValue().eulerAngles.y;
+        }
+        catch { return 0f; }
     }
 
     private static void LookPrefix(float horizontalLook, float verticalLook)
@@ -401,8 +452,10 @@ public sealed partial class XRStart : MelonMod
         DriveVrHands();   // nach Kopf und Pistole, dieselbe Kamera (VrHands.cs)
         DriveHandPoses(); // Parameter wirken im naechsten Animator-Takt (HandPoses.cs)
         DriveTeleport();  // Bogen aus der drueckenden Hand (Teleport.cs)
+        PlaceSkyCube();   // Himmelswuerfel um die finale Kamera (SkyCube.cs)
         DriveVignette();  // Komfort-Vignette und Teleport-Blende vor die finale Kamera (Comfort.cs)
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
+        DriveHandSpray();   // Strahl auf die freie Hand: Collider, Maske, Vibration (HandSpray.cs)
     }
 
     private void MeasurePoseGap()
@@ -517,7 +570,12 @@ public sealed partial class XRStart : MelonMod
         TickMenuCamera();   // vor TickVrUi: im Hauptmenue die eigene Kamera (MenuCamera.cs)
         TickSplashArm();    // Startlogo auf dem XR-Start spannen (Splash.cs)
         TickVrUi();
+        TickImmersion();    // Spiel-UI aus im Immersionsmodus, Menues bleiben sichtbar (Immersion.cs)
+        SyncGesturePrefs(); // Zonenwerte fuer den PlayerInput-Patch (Gestures.cs)
+        FlushSpawnLog();    // Zeilen aus den Spawn-Postfixen (SpawnYaw.cs)
+        if (lookAdoptLog.Length > 0) { LoggerInstance.Msg(lookAdoptLog); lookAdoptLog = ""; }   // aus LookPostfix (statisch)
         TickSky();
+        TickSkyCube();   // Himmel: eine Wuerfelseite je Frame (SkyCube.cs)
         if (started && Time.unscaledTime >= nextInputLog)
         {
             nextInputLog = Time.unscaledTime + 1f;
@@ -647,12 +705,16 @@ public sealed partial class XRStart : MelonMod
             // HorizontalLookRotation noch der reine Blick des Spiels.
             if (!trackBody)
             {
-                bodyYaw = headCtl!.HorizontalLookRotation;
+                // Minus HMD-Gierung (1.24.1): der Blick zeigt dorthin, wohin das
+                // Spiel schaut, egal wohin man im Raum steht.
+                float look = headCtl!.HorizontalLookRotation;
+                bodyYaw = Mathf.Repeat(look - rot.eulerAngles.y, 360f);
                 mouseYawSum = 0f;
                 haveRead = false;
                 trackBody = true;
-                LoggerInstance.Msg($"KOPF-SCHREIBEN: bodyYaw uebernommen {bodyYaw:F1}");
+                LoggerInstance.Msg($"KOPF-SCHREIBEN: bodyYaw uebernommen {bodyYaw:F1} (Spielblick {look:F1}, HMD-Gierung {rot.eulerAngles.y:F1}) - die Spawn-Ausrichtung verrechnet SpawnYaw.cs");
             }
+            ApplySpawnYaw(headTurn!, rot.eulerAngles.y);   // Spawn-Ausrichtung des Spiels (SpawnYaw.cs, 1.28.0)
             float gameYaw = headTurn!.localEulerAngles.y;   // Stand des Spiels, vor dem Schreiben
             float hmdYaw = rot.eulerAngles.y;
             var yaw = Quaternion.Euler(0f, hmdYaw, 0f);

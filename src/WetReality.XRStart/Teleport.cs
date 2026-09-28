@@ -25,7 +25,7 @@
 //     muss treffen.
 // 1.21.0: Treppe als Weg (TeleportSlopeWalk, WalkableSlope unten). Vorspruenge
 //   (PWS2 Abschnitt 156/160) waren schon da: Kante <= h + 0,35, Probe ab 0,45 m.
-// NOCH NICHT: Leiter-Ziel (PWS2 TryLadderTop) - erst die PWS1-Leiter messen.
+// 1.26.0: Leiter-Ziel (TryLadderTop unten, LadderTeleport/LadderTopOffset).
 //
 // 1.17.1: Zielmarker wie PWS2 (PointerStyle.cs), eine Farbe fuer alle Zeiger
 //   (PointerColor, Vorgabe blue), KEIN Teleport beim Spruehen (Nutzer): kein
@@ -183,6 +183,18 @@ public sealed partial class XRStart
         }
 
         tpValid = false;
+        // Die Leiter zuerst - die EINE gewollte Ausnahme von der Hoehengrenze (PWS2).
+        if (hitSomething && grounded && prefLadderTeleport.Value && TryLadderTop(hit, mask, out var ladderTop, out var ladderWhy))
+        {
+            tpPath.Add(ladderTop);   // der Bogen fuehrt bis zum Oberpunkt, wo der Marker sitzt
+            tpTarget = ladderTop;
+            tpValid = true;
+            tpWhy = ladderWhy;
+            float nowL = Time.unscaledTime;
+            if (tpWhy != tpLastWhy && nowL >= tpNextWhyLog) { tpLastWhy = tpWhy; tpNextWhyLog = nowL + 0.5f; LoggerInstance.Msg("TELEPORT: " + tpWhy); }
+            DrawTeleport(true);
+            return;
+        }
         if (!hitSomething) tpWhy = "Bogen trifft nichts";
         else if (!grounded) tpWhy = "nicht am Boden";
         else
@@ -241,6 +253,74 @@ public sealed partial class XRStart
         bool ok = target.y <= reference + TpSlopeRise;
         detail = $"Gang {found}/{samples} mit Boden, {foot.y:F2} -> {reference:F2} m, Ziel {target.y:F2} m, Strecke {span:F2} m";
         return ok;
+    }
+
+    // LEITER-ZIEL (1.26.0), Port von PWS2 TryLadderTop. PWS1: PWS.Ladder ist ein
+    // TRAGBARER Gegenstand (BaseMovableItem) mit m_ladderTop/-Bottom/-Forward und
+    // m_ladderIsActive (dump.cs). Gesucht wird um den Treffer (kein RaycastHit
+    // ueber die Interop-Grenze), ALLE Ebenen und auch Trigger - ob die Leiter in
+    // der Navmesh-Maske liegt, ist ungemessen. UNGEMESSEN auch: ob m_ladderTop
+    // in Weltkoordinaten steht und wohin m_ladderForward zeigt - darum werden
+    // BEIDE Seiten oben geprueft (Boden darunter + Platzprobe) und die mit Boden
+    // genommen; das Log nennt alle Werte. Keine Leiter/kein Boden = normaler Pfad.
+    private const float TpLadderSearch = 0.5f;
+    private string tpLadderLogged = "";
+
+    private bool TryLadderTop(Vector3 hit, int mask, out Vector3 target, out string why)
+    {
+        target = hit; why = "";
+        try
+        {
+            var found = Physics.OverlapSphere(hit, TpLadderSearch, Physics.AllLayers, QueryTriggerInteraction.Collide);
+            if (found == null) return false;
+            for (int i = 0; i < found.Length; i++)
+            {
+                var c = found[i];
+                if (c == null) continue;
+                var ladder = c.GetComponentInParent<Ladder>();
+                if (ladder == null) continue;
+                bool active = true, placing = false;
+                try { active = ladder.m_ladderIsActive; placing = ladder.m_placementMode; } catch { }
+                if (!active || placing) { why = "Leiter nicht aufgestellt"; continue; }
+                var top = ladder.m_ladderTop;
+                var bottom = ladder.m_ladderBottom;
+                var fwd = ladder.m_ladderForward;
+                var flat = new Vector3(fwd.x, 0f, fwd.z);
+                flat = flat.sqrMagnitude > 1e-6f ? flat.normalized : Vector3.zero;
+                float off = Math.Max(0f, prefLadderTopOffset.Value);
+                // Beide Seiten; zuerst die, die PWS2 nahm (minus Forward).
+                Vector3 best = Vector3.zero; string side = "";
+                foreach (var (cand, name) in new[] { (top - flat * off, "-Forward"), (top + flat * off, "+Forward") })
+                {
+                    if (!GroundBelow(cand, 0.8f, 1.6f, mask, out var g)) continue;
+                    var bottomSphere = g + Vector3.up * (TpProbeLift + TpProbeRadius);
+                    var topSphere = g + Vector3.up * (TpProbeTop - TpProbeRadius);
+                    if (Physics.CheckCapsule(bottomSphere, topSphere, TpProbeRadius, mask, QueryTriggerInteraction.Ignore)) continue;
+                    best = g; side = name; break;
+                }
+                string detail = $"Leiter '{ladder.name}' oben {top.ToString("F2")} unten {bottom.ToString("F2")} vorn {fwd.ToString("F2")}, Abstand {off:F2} m";
+                if (detail != tpLadderLogged) { tpLadderLogged = detail; LoggerInstance.Msg("TELEPORT: " + detail + (side.Length > 0 ? $" -> Ziel {best.ToString("F2")} ({side})" : " -> keine Seite mit Boden und Platz")); }
+                if (side.Length == 0) { why = "Leiter oben: kein Boden/Platz"; return false; }
+                target = best;
+                why = $"ok, Leiter oben ({side})";
+                return true;
+            }
+        }
+        catch (Exception e) { LoggerInstance.Warning("TELEPORT: Leitersuche " + e.GetType().Name + ": " + e.Message); }
+        return false;
+    }
+
+    // Boden unter p: Strahl von p + up nach unten ueber up + down, Bisektion.
+    private static bool GroundBelow(Vector3 p, float up, float down, int mask, out Vector3 ground)
+    {
+        ground = p;
+        var start = p + Vector3.up * up;
+        float len = up + down;
+        if (!Physics.Raycast(start, Vector3.down, len, mask, QueryTriggerInteraction.Ignore)) return false;
+        float lo = 0f, hi = len;
+        for (int k = 0; k < 10; k++) { float mid = (lo + hi) * 0.5f; if (Physics.Raycast(start, Vector3.down, mid, mask, QueryTriggerInteraction.Ignore)) hi = mid; else lo = mid; }
+        ground = start + Vector3.down * hi;
+        return true;
     }
 
     private void EndAim(bool jump)
