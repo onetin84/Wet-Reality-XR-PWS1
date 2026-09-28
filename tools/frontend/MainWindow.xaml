@@ -433,6 +433,20 @@
 
                                 <!-- Nebeneinander, nicht untereinander: das Fenster ist
                                      auf 1080p schon an der Arbeitsflaeche. -->
+                                <!-- XRStart 1.33.0: Pistolenhand (Hand = RightHand | LeftHand, PWS2). -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Washer hand" />
+                                    <ComboBox x:Name="HandBox" Grid.Column="1">
+                                        <ComboBoxItem Content="Right" />
+                                        <ComboBoxItem Content="Left" />
+                                    </ComboBox>
+                                </Grid>
+
                                 <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
                                           Content="Show VR hands" />
                                 <!-- XRStart 1.30.0: OrangeHands wie PWS2. -->
@@ -464,6 +478,9 @@
                                 <!-- XRStart 1.30.0: HandHit wie PWS2. -->
                                 <CheckBox x:Name="HandHitCheck" Margin="0,0,0,8"
                                           Content="Spraying your free hand makes it vibrate" />
+                                <!-- XRStart 1.32.0: ShowWashLaser (Vorgabe aus, wie PWS2). -->
+                                <CheckBox x:Name="LaserCheck" Margin="0,0,0,8"
+                                          Content="Show aiming laser" />
 
                                 <Grid Margin="0,0,0,4">
                                     <Grid.ColumnDefinitions>
@@ -620,13 +637,30 @@
                              Spieler mit "Alle aus" den Teleport hier und
                              schliesst, es gaebe keinen. Den Ziel-Teleport auf
                              dem Stick der Pistolenhand hat er trotzdem. -->
-                        <Border Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource PanelStyle}"
+                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}"
                                 VerticalAlignment="Stretch">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionTitle}" Text="COMFORT" />
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,0,0,14"
                                            Text="All off by default. The teleport on the washer hand stick works regardless of these settings, and never reaches higher or further than the jump button would." />
+
+                                <!-- Vorlagen wie PWS2 (XRStart 1.32.0): Alle aus, Sanft = Snap 45 +
+                                     Vignette 0,7, Maximal = Sanft + Teleport, Eigene = Anzeige. -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Preset" />
+                                    <ComboBox x:Name="ComfortPresetBox" Grid.Column="1">
+                                        <ComboBoxItem Content="All off" />
+                                        <ComboBoxItem Content="Gentle" />
+                                        <ComboBoxItem Content="Maximum" />
+                                        <ComboBoxItem Content="Custom" />
+                                    </ComboBox>
+                                </Grid>
 
                                 <CheckBox x:Name="TeleportCheck" Margin="0,2,0,6"
                                           Content="Teleport instead of walking" />
@@ -686,6 +720,99 @@
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,6,0,0"
                                            Text="Teleport: left stick forward teleports from the left hand; walking is off. Hold the menu button to hide the game UI (immersion); a short press opens the pause menu." />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- GRIFF (XRStart 1.32.0, wie PWS2 GRIP FINE-TUNING): GripOffsetX/Y/Z,
+                             RotationOffsetPitch/Yaw/Roll. Ohne die PWS2-Live-Kalibrierung. -->
+                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}"
+                                VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="GRIP FINE-TUNING" />
+                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,14"
+                                           Text="Moves and turns the washer within its own frame so that it sits where your hand holds it. In game: hold grip, X and Y on the free hand, move your washer hand to where the washer should sit, and let go. The values then show up here." />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Sideways" />
+                                    <Slider x:Name="GripXSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripXValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Height" />
+                                    <Slider x:Name="GripYSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripYValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Forward and back" />
+                                    <Slider x:Name="GripZSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripZValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Tilt up and down" />
+                                    <Slider x:Name="RotPitchSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotPitchValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Turn left and right" />
+                                    <Slider x:Name="RotYawSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotYawValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Twist sideways" />
+                                    <Slider x:Name="RotRollSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotRollValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <Button x:Name="GripResetButton" Style="{StaticResource GhostButton}"
+                                        HorizontalAlignment="Left" Padding="10,3,10,3" Margin="0,4,0,0"
+                                        Content="Reset grip" />
                             </StackPanel>
                         </Border>
 

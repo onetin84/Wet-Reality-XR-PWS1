@@ -87,7 +87,10 @@ public sealed partial class XRStart
         InitGestures(cat);       // Schulter/Pistole + Griff (Gestures.cs)
         InitSpawnYaw(cat);       // Spawn-Ausrichtung messen und uebernehmen (SpawnYaw.cs)
         InitHandSpray(cat);      // Strahl auf die freie Hand (HandSpray.cs)
+        InitHandedness(cat);     // Pistolenhand rechts/links (Handedness.cs)
         InitHandTint(cat);       // orange Handschuhe (HandTint.cs)
+        InitWashLaser(cat);      // Ziellaser (WashLaser.cs)
+        InitGrip(cat);           // Griff-Feintuning der Pistole (Grip.cs)
         // Fuer den Konfigurator (tools/frontend), Namen wie PWS2; Vorgaben = die frueheren festen Werte.
         prefTurnSpeed = cat.CreateEntry("TurnSpeed", 90f, description: "Grad pro Sekunde fuer das Drehen mit dem rechten Stick");
         prefSprayHaptics = cat.CreateEntry("SprayHaptics", true, description: "Dauervibration rechts beim Spruehen (Staerke nach Duese, Washer, Oberflaeche)");

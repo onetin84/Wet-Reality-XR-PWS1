@@ -137,7 +137,7 @@ public sealed partial class XRStart
         try
         {
             var hmd = InputSystem.GetDevice<XRHMD>();
-            var l = XRController.leftHand;
+            var l = OffCtl;   // Griffzeiger aus der freien Hand
             var cam = Camera.main;
             if (hmd == null || l == null || cam == null || !l.isTracked.isPressed) { HideLine(); return; }
 

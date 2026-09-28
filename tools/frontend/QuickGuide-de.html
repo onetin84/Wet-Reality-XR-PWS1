@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Wet Reality XR Mod &mdash; Kurzanleitung</title>
+<style>
+/*
+  Self-contained on purpose: no web fonts, no CDN, no scripts. The guide is
+  opened from the configurator as a local file and has to work with no internet
+  connection at all.
+
+  Palette from the moodboard, same values as the configurator's XAML.
+*/
+:root {
+  --ink:    #12191B;
+  --deep:   #083B43;
+  --panel:  #0C2B31;
+  --cyan:   #15D9D0;
+  --paper:  #F5FCFA;
+  --amber:  #FFD447;
+  --coral:  #FF6B55;
+  --muted:  rgba(245, 252, 250, 0.58);
+  --line:   rgba(21, 217, 208, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 24px 72px;
+  background: linear-gradient(170deg, var(--ink) 0%, #0A2429 55%, var(--deep) 100%);
+  background-attachment: fixed;
+  color: var(--paper);
+  font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+header {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 40px 0 28px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+header img { width: 210px; height: auto; }
+
+header .claim {
+  flex: 1;
+  min-width: 260px;
+  color: var(--muted);
+  font-size: 14px;
+  padding-bottom: 6px;
+}
+
+h1 { display: none; }
+
+h2 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 44px 0 14px;
+}
+
+h2:first-of-type { margin-top: 34px; }
+
+.lede {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 28px 0 0;
+}
+
+.lede strong { color: var(--amber); }
+
+figure { margin: 26px 0 8px; text-align: center; }
+figure img { max-width: 100%; height: auto; }
+
+figcaption {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.hands { display: flex; gap: 20px; flex-wrap: wrap; }
+.hands > section { flex: 1; min-width: 320px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(245, 252, 250, 0.07);
+  vertical-align: top;
+}
+
+tr:last-child th, tr:last-child td { border-bottom: none; }
+
+th {
+  width: 41%;
+  font-weight: 600;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+td { color: var(--muted); }
+
+/* A button name, so "A" and "R3" read as hardware rather than prose. */
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: rgba(21, 217, 208, 0.14);
+  border: 1px solid var(--line);
+  color: var(--cyan);
+  font: 600 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+}
+
+kbd.warm { background: rgba(255, 212, 71, 0.14); border-color: rgba(255, 212, 71, 0.3); color: var(--amber); }
+
+.hint {
+  border-left: 2px solid var(--cyan);
+  padding: 2px 0 2px 16px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hint.warn { border-left-color: var(--coral); }
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+footer img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+footer .spacer { flex: 1; }
+
+/* ---- Annotated controller figure -------------------------------------
+   The photograph carried no information on its own: two controllers, with
+   nothing said about which button does what, while the tables below held
+   the whole mapping. Either the picture goes or the references come.
+
+   Each <b> is a ZERO-SIZE ANCHOR at the button itself, in percentages so
+   it follows the image at any width, and the dot is drawn centred on it.
+   The label box is the <i> inside, offset left or right of the anchor.
+   That way the coordinates mean exactly one thing and can be checked by
+   drawing them back onto the image.
+
+   Below 760 px the overlay is hidden. Labels that small would be
+   unreadable and would cover the buttons they point at, and nothing is
+   lost - the tables underneath say the same in words. */
+.pad { position: relative; margin: 26px 0 10px; }
+.pad img { display: block; width: 100%; height: auto; }
+
+.pad b { position: absolute; width: 0; height: 0; }
+
+.pad b::after {
+  content: "";
+  position: absolute;
+  left: -5px; top: -5px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(8, 30, 34, 0.85);
+}
+
+.pad b i {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 11px/1.35 "Segoe UI", system-ui, sans-serif;
+  font-style: normal;
+  color: var(--paper);
+  background: rgba(8, 30, 34, 0.88);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cyan);
+  border-radius: 5px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.pad b.l i { right: 14px; }
+.pad b.r i { left: 14px; }
+
+.pad b i em { font-style: normal; color: var(--cyan); display: block; font-size: 10px; }
+
+@media (max-width: 760px) { .pad b { display: none; } }
+
+@media print {
+  .pad b i { background: #fff; color: #111; border-color: #999; }
+  .pad b i em { color: #036; }
+}
+
+@media print {
+  .pad b { background: #fff; color: #111; border-color: #999; }
+  .pad b em { color: #036; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  table, .lede { background: #f4f4f4; border-color: #ccc; }
+  td, th, .hint, footer, header .claim, figcaption { color: #333; }
+  h2 { color: #036; }
+  kbd { background: #e8e8e8; border-color: #bbb; color: #036; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="assets/logo.png" alt="Wet Reality XR Mod">
+  <div class="claim">
+    Room-Scale-VR f&uuml;r PowerWash Simulator.<br>Die Pistole folgt deiner Hand in sechs Freiheitsgraden &mdash; wohin du schaust und wohin du spr&uuml;hst, ist v&ouml;llig unabh&auml;ngig.
+  </div>
+</header>
+
+<div class="lede">
+  <strong>Spiel wie gewohnt &uuml;ber Steam starten &mdash; mehr ist es nicht.</strong> Headset aufsetzen: VR startet schon im Hauptmen&uuml;, und die Pistole liegt in der Hand, sobald ein Level geladen ist. Beenden &uuml;ber das Men&uuml; des Spiels.
+</div>
+
+<p class="hint">
+  Die Headset-Software (zum Beispiel Virtual Desktop) <em>vor</em> dem Spiel starten.
+</p>
+
+<div class="pad">
+  <img src="assets/controller.png" alt="Meta Quest 3 controllers">
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Gehen<em>voll: Sprint</em><em>Komfort-Teleport: vor = Teleport</em></i></b>
+  <b class="r" style="left:31.9%; top:20.0%;"><i>Inventar<em>Y &middot; halten: n&auml;chster Washer</em><em>im Men&uuml;: zur&uuml;ck</em></i></b>
+  <b class="r" style="left:29.9%; top:25.9%;"><i>Aufnehmen / Ablegen<em>X</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pausenmen&uuml;<em>Men&uuml; &middot; halten: Spiel-UI aus</em></i></b>
+  <b class="r" style="left:31.3%; top:44.4%;"><i>D&uuml;se drehen<em>Trigger</em></i></b>
+  <b class="r" style="left:34.2%; top:59.6%;"><i>Schmutz hervorheben<em>Griff &middot; Tragen: drehen</em><em>an der Pistole: Verl&auml;ngerung</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Drehen<em>hoch: Teleport &middot; runter: D&uuml;se</em><em>R3 halten: Scheiben</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B &middot; halten: liegen</em></i></b>
+  <b class="l" style="left:69.7%; top:25.9%;"><i>Springen<em>A</em></i></b>
+  <b class="l" style="left:68.7%; top:44.4%;"><i>Spr&uuml;hen<em>Trigger &middot; klickt im Men&uuml;</em></i></b>
+  <b class="l" style="left:65.8%; top:59.6%;"><i>Dauerspr&uuml;hen<em>Griff</em><em>Schulter: Washer &middot; H&uuml;fte: Seife</em></i></b>
+</div>
+
+<p class="hint">
+  Der linke Controller bewegt dich, der rechte ist die Pistole. Die Beschriftungen sind die Kurzfassung, die Tabellen unten sind vollst&auml;ndig. Linksh&auml;nder? Im Konfigurator die Pistolenhand w&auml;hlen &mdash; alle Rollen tauschen die Seite, nur die Men&uuml;taste bleibt links.
+</p>
+
+<h2>Rechter Controller &mdash; die Pistolenhand</h2>
+
+<table>
+  <tr><th>Controller bewegen</th><td>Die Pistole folgt der Hand in Position und Richtung</td></tr>
+  <tr><th>Trigger</th><td>Spr&uuml;hen, solange gehalten. Im Men&uuml;: klicken</td></tr>
+  <tr><th>Griff</th><td>Dauerspr&uuml;hen an oder aus. L&auml;uft es, schaltet der Griff es nur aus</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Springen &mdash; mit Komfort-Teleport aus</td></tr>
+  <tr><th><kbd>B</kbd> tippen / halten</th><td>Ducken / Liegen</td></tr>
+  <tr><th>Stick links / rechts</th><td>Drehen. Mit <i>Sprungdrehung</i> in festen Schritten</td></tr>
+  <tr><th>Stick hoch</th><td><b>Teleport-Ziel.</b> Mit dieser Hand zielen, Stick zur&uuml;ck in die Mitte = springen. Erreicht Vorspr&uuml;nge, auf die man springen k&ouml;nnte, begehbare Treppen und oben eine aufgestellte Leiter</td></tr>
+  <tr><th>Stick runter</th><td>N&auml;chste D&uuml;se</td></tr>
+  <tr><th><kbd>R3</kbd> halten</th><td><b>Ausr&uuml;stungsscheiben</b> &mdash; D&uuml;se, Verl&auml;ngerung, Reinigungsmittel</td></tr>
+</table>
+
+<h2>Ausr&uuml;stungsscheiben (<kbd>R3</kbd> halten)</h2>
+
+<table>
+  <tr><th>Strahl</th><td>&Ouml;ffnet in der Mitte; Strahl nach au&szlig;en &uuml;ber ein Segment = gew&auml;hlt &mdash; die n&auml;chste Scheibe folgt, nach der dritten schlie&szlig;t sie</td></tr>
+  <tr><th>Linker Stick</th><td>W&auml;hlt in jede Richtung</td></tr>
+  <tr><th>Griff links / rechts</th><td>Vorige / n&auml;chste Scheibe</td></tr>
+</table>
+
+<h2>Linker Controller &mdash; die freie Hand</h2>
+
+<table>
+  <tr><th>Stick</th><td>Gehen; voll ausgelenkt: Sprint</td></tr>
+  <tr><th>Trigger</th><td>D&uuml;se drehen</td></tr>
+  <tr><th>Griff</th><td>Schmutz hervorheben &middot; beim Tragen: Gegenstand drehen</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Aufnehmen / Ablegen, worauf der kurze Strahl zeigt</td></tr>
+  <tr><th><kbd>Y</kbd> tippen</th><td>Inventar. <b>Im Men&uuml;: zur&uuml;ck</b> &mdash; schlie&szlig;t Popups, geht eine Ebene zur&uuml;ck, schlie&szlig;t das Tablet</td></tr>
+  <tr><th><kbd>Y</kbd> halten</th><td>N&auml;chster Washer</td></tr>
+  <tr><th><kbd>L3</kbd></th><td>N&auml;chste Verl&auml;ngerung</td></tr>
+  <tr><th>Men&uuml; tippen / halten</th><td>Pausenmen&uuml; / <b>Immersionsmodus</b>: Spiel-UI aus und an</td></tr>
+</table>
+
+<h2>Gesten</h2>
+
+<table>
+  <tr><th>Pistolenhand hinter die Schulter + Griff</th><td>N&auml;chster Washer</td></tr>
+  <tr><th>Pistolenhand an die H&uuml;fte + Griff</th><td>Seife aus dem Holster &mdash; auf die Seifend&uuml;se, nochmal = zur&uuml;ck. Nimmt das am Washer ausger&uuml;stete Reinigungsmittel; ohne Mittel passiert nichts</td></tr>
+  <tr><th>Freie Hand an die Pistole + Griff</th><td>N&auml;chste Verl&auml;ngerung (beide H&auml;nde vibrieren)</td></tr>
+  <tr><th>Freie Hand: Griff + X + Y halten</th><td><b>Griff-Kalibrierung.</b> Die Pistole bleibt stehen; Pistolenhand dorthin, wo sie sitzen soll, loslassen. Gespeichert und im Konfigurator zu sehen</td></tr>
+</table>
+
+<h2>Komfortoptionen (alle aus)</h2>
+
+<table>
+  <tr><th>Teleport statt Gehen</th><td>Der Stick der freien Hand teleportiert nach vorn; Gehen und Springen sind aus</td></tr>
+  <tr><th>Sprungdrehung</th><td>15, 30, 45 oder 60 Grad</td></tr>
+  <tr><th>Vignette</th><td>Dunkelt beim Gehen und Drehen den Blickrand ab</td></tr>
+  <tr><th>Vorlagen</th><td>Alle aus &middot; Sanft (Sprungdrehung + Vignette) &middot; Maximal (+ Teleport)</td></tr>
+</table>
+
+<h2>Vibration</h2>
+
+<table>
+  <tr><th>Beim Spr&uuml;hen</th><td>Folgt der D&uuml;se und ob der Strahl etwas trifft</td></tr>
+  <tr><th>Strahl auf die freie Hand</th><td>Die freie Hand vibriert, und das Spiel spritzt auf ihr</td></tr>
+</table>
+
+<h2>Wenn etwas nicht stimmt</h2>
+
+<table>
+  <tr><th>Die Pistole sitzt nicht in der Hand</th><td>Im Spiel kalibrieren (freie Hand: Griff + X + Y) oder Griff-Feintuning im Konfigurator</td></tr>
+  <tr><th>Men&uuml;s zu gro&szlig; oder zu nah</th><td>Men&uuml;gr&ouml;&szlig;e und -abstand im Konfigurator</td></tr>
+  <tr><th>Aus der D&uuml;se kommt eine rote Linie</th><td>Das ist der Ziellaser &mdash; im Konfigurator abschalten</td></tr>
+  <tr><th>VR ist nicht gestartet</th><td>Erst die Headset-Software, dann das Spiel starten. <code>MelonLoader\Latest.log</code> sagt, was die Mod gefunden hat</td></tr>
+</table>
+
+<p class="hint warn">
+  Der erste Start nach der Installation von MelonLoader dauert eine Weile ohne sichtbaren Fortschritt: er erzeugt einmalig seine Hilfsdateien. Er ist nicht abgest&uuml;rzt &mdash; einfach warten.
+</p>
+
+<footer>
+  <img src="assets/avatar.png" alt="">
+  <span>by Tino</span>
+  <span id="version" style="opacity:0.7">v1.33.0</span>
+  <span class="spacer"></span>
+  <span>Wet Reality XR Mod &mdash; inoffiziell, nicht verbunden mit FuturLab oder Square Enix</span>
+</footer>
+
+</div>
+</body>
+</html>

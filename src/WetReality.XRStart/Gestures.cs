@@ -99,8 +99,10 @@ public sealed partial class XRStart
                 {
                     var hand = r.devicePosition.ReadValue();
                     local = Quaternion.Inverse(Quaternion.Euler(0f, torsoYaw, 0f)) * (hand - hmdPos);
-                    shoulderDist = (local - shoulderCentre).magnitude;
-                    hipDist = (local - hipCentre).magnitude;
+                    // Linkshaendig spiegeln die Koerperzonen mit der Pistolenhand (PWS2 §108).
+                    var sideV = new Vector3(HandSide, 1f, 1f);
+                    shoulderDist = (local - Vector3.Scale(shoulderCentre, sideV)).magnitude;
+                    hipDist = (local - Vector3.Scale(hipCentre, sideV)).magnitude;
                     shoulder = shoulderDist <= shoulderRadius;
                     hip = hipDist <= hipRadius;
                     if (l != null)

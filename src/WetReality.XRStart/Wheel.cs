@@ -246,6 +246,8 @@ public sealed partial class XRStart
         // ---- Y: kurz Inventar, lang naechster Washer
         bool y = Held(l, "secondaryButton");
         if (y && yDownAt < 0f) { yDownAt = now; yLongSent = false; }
+        // In die Griff-Kalibrierung gefallen (Grip.cs): dieser Y-Druck tut nichts, auch beim Loslassen.
+        if (y && yDownAt >= 0f && CalibrateSuppressed) yLongSent = true;
         if (y && yDownAt >= 0f && !yLongSent && now - yDownAt >= YHoldSeconds)
         {
             yLongSent = true;
@@ -305,7 +307,7 @@ public sealed partial class XRStart
         {
             var cam = Camera.main;
             var hmd = UnityEngine.InputSystem.InputSystem.GetDevice<XRHMD>();
-            var r = XRController.rightHand;
+            var r = WasherCtl;
             if (cam == null || hmd == null || r == null || uiRoot == null) return;
             var camT = cam.transform;
             var hmdRot = hmd.centerEyeRotation.ReadValue();
@@ -340,7 +342,7 @@ public sealed partial class XRStart
 
             // Stick hat Vorrang, wenn ausgelenkt; sonst der Zeiger. Der LINKE Stick
             // (Nutzer 1.19.3): der rechte haelt R3 gedrueckt und oeffnet die Scheibe.
-            var st = XRController.leftHand?.TryGetChildControl("thumbstick")?.TryCast<Vector2Control>();
+            var st = OffCtl?.TryGetChildControl("thumbstick")?.TryCast<Vector2Control>();
             var sv = st == null ? Vector2.zero : st.ReadValue();
             bool stick = sv.magnitude > 0.5f;
             wheelWant = stick ? sv : (v.magnitude >= 1f ? v : Vector2.zero);

@@ -78,8 +78,9 @@ public sealed partial class XRStart
         if (!inputOn || !inputStartedStatic) { Release(__instance); return; }
         try
         {
-            var r = XRController.rightHand;
-            var l = XRController.leftHand;
+            // Rollen statt Seiten (1.33.0, Handedness.cs): r = Pistolenhand, l = freie Hand.
+            var r = WasherCtl;
+            var l = OffCtl;
 
             UpdateButtons(__instance, r, l);
 
@@ -308,7 +309,11 @@ public sealed partial class XRStart
                 btnEvents.Add("Trigger links: RotateNozzle");
             }
 
-            if (Edge(l, "L", "primaryButton"))
+            // Griff + X ohne Tragen = Beginn der Griff-Kalibrierung (Grip.cs), kein Aufnehmen.
+            bool xCalib = CalibrateSuppressed || (!pi.CarryItem && Held(l, "gripPressed"));
+            bool xEdge = Edge(l, "L", "primaryButton");   // EIN Aufruf: Edge merkt sich den Stand
+            if (xEdge && xCalib) btnEvents.Add("X: Kalibrier-Kombination - kein Aufnehmen");
+            else if (xEdge)
             {
                 if (pi.BlockedInput) btnEvents.Add("X: gesperrt (BlockedInput)");
                 else
@@ -325,7 +330,7 @@ public sealed partial class XRStart
             }
 
             // Beim Tragen bleibt der Griff Dreh-Modifikator; an der Pistole = Verlaengerung (Gestures.cs).
-            if (Edge(l, "L", "gripPressed") && !pi.CarryItem && !wheelOpen && !TryWasherGesture(pi))
+            if (Edge(l, "L", "gripPressed") && !pi.CarryItem && !wheelOpen && !CalibrateSuppressed && !TryWasherGesture(pi))
                 HighlightDirt();
 
             if (Edge(l, "L", "thumbstickClicked") && Free(pi, "L3 Verlaengerung"))
@@ -335,7 +340,7 @@ public sealed partial class XRStart
             }
 
             // Tippen = Pause beim LOSLASSEN, Halten = Immersionsmodus (Immersion.cs).
-            MenuButton(pi, l);
+            MenuButton(pi, XRController.leftHand);   // die Menue-Taste gibt es nur links (PWS2)
         }
         catch (Exception e)
         {
@@ -429,7 +434,7 @@ public sealed partial class XRStart
     {
         try
         {
-            var c = right ? XRController.rightHand : XRController.leftHand;
+            var c = right ? WasherCtl : OffCtl;   // "right" heisst seit 1.33.0 Pistolenhand
             var r = c == null ? null : c.TryCast<XRControllerWithRumble>();
             if (r == null) { buzzRefused++; if (buzzRefused <= 3) btnEvents.Add($"Vibration {why}: kein XRControllerWithRumble"); return; }
             // Rechts laeuft durch die Warteschlange der Strahl-Haptik, sonst
@@ -463,7 +468,7 @@ public sealed partial class XRStart
         if (!inputOn || !started || !trackBody || menuActive || wheelOpen) return;   // im Menue scrollt der Stick (MenuPointer.cs)
         try
         {
-            var rs = Stick(XRController.rightHand);
+            var rs = Stick(WasherCtl);
             if (rs == null) return;
             var rv = rs.ReadValue();
             float x = rv.x;

@@ -186,7 +186,7 @@ public sealed partial class XRStart
             else HideTool();
         }
 
-        var r = XRController.rightHand;
+        var r = WasherCtl;   // Zeigestrahl aus der Pistolenhand
         float trig = 0f;
         try { var a = r?.TryGetChildControl("trigger")?.TryCast<AxisControl>(); if (a != null) trig = a.ReadValue(); } catch { }
         if (menuMode) menuOwnsTrigger = true;

@@ -128,7 +128,7 @@ public sealed partial class XRStart
         try
         {
             var hmd = InputSystem.GetDevice<XRHMD>();
-            var ctl = XRController.rightHand;
+            var ctl = WasherCtl;   // Pistolenhand (Handedness.cs)
             if (hmd == null || !hmd.isTracked.isPressed || ctl == null || !ctl.isTracked.isPressed)
             {
                 gunSkips++;
@@ -153,6 +153,15 @@ public sealed partial class XRStart
             var toWorld = camT.rotation * Quaternion.Inverse(hmdRot);
             var gunRot = toWorld * aimRot;
             var handWorld = camT.position + toWorld * (gripPos - hmdPos);
+            // Griff-Feintuning (1.32.0, PWS2-Schluessel): Drehung und Versatz im
+            // EIGENEN Rahmen der Pistole; Vorgabe 0 = wie bisher.
+            var rawRot = gunRot;
+            var rawPos = handWorld;
+            gunRot = gunRot * GripRotation;
+            handWorld += gunRot * GripOffset;
+            // Live-Kalibrierung (Grip.cs): waehrend der Kombination bleibt die
+            // Pistole eingefroren; beim Loslassen wird der Griff geloest.
+            CalibrateGrip(rawRot, rawPos, ref gunRot, ref handWorld);
 
             gunAsm!.SetPositionAndRotation(handWorld, gunRot);
             gunWrotePos = gunAsm.localPosition;

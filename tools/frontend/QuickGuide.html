@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wet Reality XR Mod &mdash; Quick Guide</title>
+<style>
+/*
+  Self-contained on purpose: no web fonts, no CDN, no scripts. The guide is
+  opened from the configurator as a local file and has to work with no internet
+  connection at all.
+
+  Palette from the moodboard, same values as the configurator's XAML.
+*/
+:root {
+  --ink:    #12191B;
+  --deep:   #083B43;
+  --panel:  #0C2B31;
+  --cyan:   #15D9D0;
+  --paper:  #F5FCFA;
+  --amber:  #FFD447;
+  --coral:  #FF6B55;
+  --muted:  rgba(245, 252, 250, 0.58);
+  --line:   rgba(21, 217, 208, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 24px 72px;
+  background: linear-gradient(170deg, var(--ink) 0%, #0A2429 55%, var(--deep) 100%);
+  background-attachment: fixed;
+  color: var(--paper);
+  font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+header {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 40px 0 28px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+header img { width: 210px; height: auto; }
+
+header .claim {
+  flex: 1;
+  min-width: 260px;
+  color: var(--muted);
+  font-size: 14px;
+  padding-bottom: 6px;
+}
+
+h1 { display: none; }
+
+h2 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 44px 0 14px;
+}
+
+h2:first-of-type { margin-top: 34px; }
+
+.lede {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 28px 0 0;
+}
+
+.lede strong { color: var(--amber); }
+
+figure { margin: 26px 0 8px; text-align: center; }
+figure img { max-width: 100%; height: auto; }
+
+figcaption {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.hands { display: flex; gap: 20px; flex-wrap: wrap; }
+.hands > section { flex: 1; min-width: 320px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(245, 252, 250, 0.07);
+  vertical-align: top;
+}
+
+tr:last-child th, tr:last-child td { border-bottom: none; }
+
+th {
+  width: 41%;
+  font-weight: 600;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+td { color: var(--muted); }
+
+/* A button name, so "A" and "R3" read as hardware rather than prose. */
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: rgba(21, 217, 208, 0.14);
+  border: 1px solid var(--line);
+  color: var(--cyan);
+  font: 600 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+}
+
+kbd.warm { background: rgba(255, 212, 71, 0.14); border-color: rgba(255, 212, 71, 0.3); color: var(--amber); }
+
+.hint {
+  border-left: 2px solid var(--cyan);
+  padding: 2px 0 2px 16px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hint.warn { border-left-color: var(--coral); }
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+footer img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+footer .spacer { flex: 1; }
+
+/* ---- Annotated controller figure -------------------------------------
+   The photograph carried no information on its own: two controllers, with
+   nothing said about which button does what, while the tables below held
+   the whole mapping. Either the picture goes or the references come.
+
+   Each <b> is a ZERO-SIZE ANCHOR at the button itself, in percentages so
+   it follows the image at any width, and the dot is drawn centred on it.
+   The label box is the <i> inside, offset left or right of the anchor.
+   That way the coordinates mean exactly one thing and can be checked by
+   drawing them back onto the image.
+
+   Below 760 px the overlay is hidden. Labels that small would be
+   unreadable and would cover the buttons they point at, and nothing is
+   lost - the tables underneath say the same in words. */
+.pad { position: relative; margin: 26px 0 10px; }
+.pad img { display: block; width: 100%; height: auto; }
+
+.pad b { position: absolute; width: 0; height: 0; }
+
+.pad b::after {
+  content: "";
+  position: absolute;
+  left: -5px; top: -5px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(8, 30, 34, 0.85);
+}
+
+.pad b i {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 11px/1.35 "Segoe UI", system-ui, sans-serif;
+  font-style: normal;
+  color: var(--paper);
+  background: rgba(8, 30, 34, 0.88);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cyan);
+  border-radius: 5px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.pad b.l i { right: 14px; }
+.pad b.r i { left: 14px; }
+
+.pad b i em { font-style: normal; color: var(--cyan); display: block; font-size: 10px; }
+
+@media (max-width: 760px) { .pad b { display: none; } }
+
+@media print {
+  .pad b i { background: #fff; color: #111; border-color: #999; }
+  .pad b i em { color: #036; }
+}
+
+@media print {
+  .pad b { background: #fff; color: #111; border-color: #999; }
+  .pad b em { color: #036; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  table, .lede { background: #f4f4f4; border-color: #ccc; }
+  td, th, .hint, footer, header .claim, figcaption { color: #333; }
+  h2 { color: #036; }
+  kbd { background: #e8e8e8; border-color: #bbb; color: #036; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="assets/logo.png" alt="Wet Reality XR Mod">
+  <div class="claim">
+    Room-scale VR for PowerWash Simulator.<br>The washer follows your hand in six degrees of freedom &mdash; where you look and where you spray are fully independent.
+  </div>
+</header>
+
+<div class="lede">
+  <strong>Start the game through Steam as usual &mdash; that is the whole procedure.</strong> Put the headset on: VR comes up in the main menu, and the washer is in your hand as soon as a level has loaded. To quit, use the game&rsquo;s own menu.
+</div>
+
+<p class="hint">
+  Have your headset software (for example Virtual Desktop) running <em>before</em> you start the game.
+</p>
+
+<div class="pad">
+  <img src="assets/controller.png" alt="Meta Quest 3 controllers">
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Walk<em>push fully: sprint</em><em>comfort teleport: forward = teleport</em></i></b>
+  <b class="r" style="left:31.9%; top:20.0%;"><i>Inventory<em>Y &middot; hold: next washer</em><em>in menus: back</em></i></b>
+  <b class="r" style="left:29.9%; top:25.9%;"><i>Pick up / put down<em>X</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pause menu<em>Menu &middot; hold: game UI off</em></i></b>
+  <b class="r" style="left:31.3%; top:44.4%;"><i>Rotate nozzle<em>trigger</em></i></b>
+  <b class="r" style="left:34.2%; top:59.6%;"><i>Highlight dirt<em>grip &middot; carrying: rotate</em><em>at the washer: extension</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Turn<em>up: teleport &middot; down: nozzle</em><em>hold R3: wheels</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Crouch<em>B &middot; hold: prone</em></i></b>
+  <b class="l" style="left:69.7%; top:25.9%;"><i>Jump<em>A</em></i></b>
+  <b class="l" style="left:68.7%; top:44.4%;"><i>Spray<em>trigger &middot; clicks in menus</em></i></b>
+  <b class="l" style="left:65.8%; top:59.6%;"><i>Spray on / off<em>grip</em><em>shoulder: washer &middot; hip: soap</em></i></b>
+</div>
+
+<p class="hint">
+  Left controller moves you, right controller is the washer. The labels are the short version; the tables below are complete. Left-handed? Choose the washer hand in the configurator &mdash; every role swaps sides, only the menu button stays on the left.
+</p>
+
+<h2>Right controller &mdash; the washer hand</h2>
+
+<table>
+  <tr><th>Move the controller</th><td>The washer follows your hand in position and direction</td></tr>
+  <tr><th>Trigger</th><td>Spray, while held. In menus: click</td></tr>
+  <tr><th>Grip</th><td>Continuous spray on or off. While it runs, the grip only switches it off</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Jump &mdash; switched off with the comfort teleport</td></tr>
+  <tr><th><kbd>B</kbd> tap / hold</th><td>Crouch / prone</td></tr>
+  <tr><th>Stick left / right</th><td>Turn. With <i>snap turn</i> in fixed steps</td></tr>
+  <tr><th>Stick up</th><td><b>Teleport target.</b> Aim with this hand, let the stick return to commit. Reaches ledges you could jump onto, walkable stairs, and the top of a ladder you have put up</td></tr>
+  <tr><th>Stick down</th><td>Next nozzle</td></tr>
+  <tr><th><kbd>R3</kbd> hold</th><td><b>Equipment wheels</b> &mdash; nozzle, extension, cleaning liquid</td></tr>
+</table>
+
+<h2>Equipment wheels (hold <kbd>R3</kbd>)</h2>
+
+<table>
+  <tr><th>Beam</th><td>Opens at the centre; move the beam out over a segment to pick it &mdash; the next wheel follows, after the third it closes</td></tr>
+  <tr><th>Left stick</th><td>Picks in any direction</td></tr>
+  <tr><th>Left / right grip</th><td>Previous / next wheel</td></tr>
+</table>
+
+<h2>Left controller &mdash; the free hand</h2>
+
+<table>
+  <tr><th>Stick</th><td>Walk; pushed fully: sprint</td></tr>
+  <tr><th>Trigger</th><td>Rotate the nozzle</td></tr>
+  <tr><th>Grip</th><td>Highlight dirt &middot; while carrying: rotate the item</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Pick up / put down what the short beam points at</td></tr>
+  <tr><th><kbd>Y</kbd> tap</th><td>Inventory. <b>In menus: back</b> &mdash; closes popups, steps back, closes the tablet</td></tr>
+  <tr><th><kbd>Y</kbd> hold</th><td>Next washer</td></tr>
+  <tr><th><kbd>L3</kbd></th><td>Next extension</td></tr>
+  <tr><th>Menu tap / hold</th><td>Pause menu / <b>immersion mode</b>: game UI off and on</td></tr>
+</table>
+
+<h2>Gestures</h2>
+
+<table>
+  <tr><th>Washer hand behind your shoulder + grip</th><td>Next washer</td></tr>
+  <tr><th>Washer hand at your hip + grip</th><td>Soap from the holster &mdash; switches to the soap nozzle, again to switch back. Uses the cleaning liquid equipped on this washer; nothing happens without one</td></tr>
+  <tr><th>Free hand at the washer + grip</th><td>Next extension (both hands buzz)</td></tr>
+  <tr><th>Free hand: grip + X + Y, hold</th><td><b>Grip calibration.</b> The washer stays where it is; move your washer hand to where it should sit and let go. Saved, and shown in the configurator</td></tr>
+</table>
+
+<h2>Comfort options (all off by default)</h2>
+
+<table>
+  <tr><th>Teleport instead of walking</th><td>The free hand&rsquo;s stick teleports forward; walking and jumping are off</td></tr>
+  <tr><th>Snap turn</th><td>15, 30, 45 or 60 degrees</td></tr>
+  <tr><th>Vignette</th><td>Darkens the edge of view while moving and turning</td></tr>
+  <tr><th>Presets</th><td>All off &middot; Gentle (snap + vignette) &middot; Maximum (+ teleport)</td></tr>
+</table>
+
+<h2>Vibration</h2>
+
+<table>
+  <tr><th>While spraying</th><td>Follows the nozzle and whether the jet hits something</td></tr>
+  <tr><th>Spraying your free hand</th><td>The free hand buzzes, and the game splashes on it</td></tr>
+</table>
+
+<h2>If something looks wrong</h2>
+
+<table>
+  <tr><th>The washer does not sit in my hand</th><td>Calibrate in game (free hand: grip + X + Y) or use the grip fine-tuning in the configurator</td></tr>
+  <tr><th>Menus too big or too close</th><td>Menu size and distance in the configurator</td></tr>
+  <tr><th>A red line comes out of the nozzle</th><td>That is the aiming laser &mdash; switch it off in the configurator</td></tr>
+  <tr><th>VR did not start</th><td>Start the headset software first, then the game. <code>MelonLoader\Latest.log</code> says what the mod found</td></tr>
+</table>
+
+<p class="hint warn">
+  The first launch after installing MelonLoader takes a while with no sign of progress: it generates its support files once. It has not crashed &mdash; let it finish.
+</p>
+
+<footer>
+  <img src="assets/avatar.png" alt="">
+  <span>by Tino</span>
+  <span id="version" style="opacity:0.7">v1.33.0</span>
+  <span class="spacer"></span>
+  <span>Wet Reality XR Mod &mdash; unofficial, not affiliated with FuturLab or Square Enix</span>
+</footer>
+
+</div>
+</body>
+</html>

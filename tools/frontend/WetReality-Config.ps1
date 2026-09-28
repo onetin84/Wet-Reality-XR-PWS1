@@ -622,6 +622,16 @@ function Load-Settings {
     (Ctl 'OrangeHandsCheck').IsChecked = (Read-CfgValue -Key 'OrangeHands' -Fallback 'true') -eq 'true'
     (Ctl 'LoadingBlackoutCheck').IsChecked = (Read-CfgValue -Key 'LoadingBlackout' -Fallback 'true') -eq 'true'
     (Ctl 'MenuHoldSlider').Value = [double](Read-CfgValue -Key 'MenuHoldSeconds' -Fallback '0.6')
+    # Grip.cs (XRStart 1.32.0), PWS2 keys; 0 = the washer exactly on the controller.
+    (Ctl 'GripXSlider').Value = [double](Read-CfgValue -Key 'GripOffsetX' -Fallback '0')
+    (Ctl 'GripYSlider').Value = [double](Read-CfgValue -Key 'GripOffsetY' -Fallback '0')
+    (Ctl 'GripZSlider').Value = [double](Read-CfgValue -Key 'GripOffsetZ' -Fallback '0')
+    (Ctl 'RotPitchSlider').Value = [double](Read-CfgValue -Key 'RotationOffsetPitch' -Fallback '0')
+    (Ctl 'RotYawSlider').Value = [double](Read-CfgValue -Key 'RotationOffsetYaw' -Fallback '0')
+    (Ctl 'RotRollSlider').Value = [double](Read-CfgValue -Key 'RotationOffsetRoll' -Fallback '0')
+    (Ctl 'LaserCheck').IsChecked = (Read-CfgValue -Key 'ShowWashLaser' -Fallback 'false') -eq 'true'
+    $hand = (Read-CfgValue -Key 'Hand' -Fallback 'RightHand').Trim('"')
+    if ($hand -eq 'LeftHand') { (Ctl 'HandBox').SelectedIndex = 1 } else { (Ctl 'HandBox').SelectedIndex = 0 }
     # AutoStart, SkipLoadingContinue and DevCheats are not player options any
     # more (user 28.09.): not read and never written - the cfg keeps its values.
 
@@ -636,6 +646,7 @@ function Load-Settings {
     if ($mirrorIndex -lt 0) { $mirrorIndex = 0 }
     (Ctl 'MirrorBox').SelectedIndex = $mirrorIndex
 
+    Sync-ComfortPreset
     $script:Loading = $false
     Update-Labels
     (Ctl 'SaveHint').Text = ''
@@ -652,6 +663,12 @@ function Update-Labels {
     (Ctl 'MenuHoldValue').Text = "$((Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1)))) s"
 
     $deg = [char]0x00B0
+    (Ctl 'GripXValue').Text = "$([int][Math]::Round((Ctl 'GripXSlider').Value * 100)) cm"
+    (Ctl 'GripYValue').Text = "$([int][Math]::Round((Ctl 'GripYSlider').Value * 100)) cm"
+    (Ctl 'GripZValue').Text = "$([int][Math]::Round((Ctl 'GripZSlider').Value * 100)) cm"
+    (Ctl 'RotPitchValue').Text = "$([int](Ctl 'RotPitchSlider').Value)$deg"
+    (Ctl 'RotYawValue').Text = "$([int](Ctl 'RotYawSlider').Value)$deg"
+    (Ctl 'RotRollValue').Text = "$([int](Ctl 'RotRollSlider').Value)$deg"
     (Ctl 'SnapAngleValue').Text = "$([int](Ctl 'SnapAngleSlider').Value)$deg"
     # At 0 the word says the vignette is off - "0 %" reads like a measurement (PWS2).
     $strength = [int]((Ctl 'VignetteStrengthSlider').Value * 100)
@@ -661,6 +678,47 @@ function Update-Labels {
     # A slider for a switched-off feature is greyed, not hidden (PWS2).
     (Ctl 'SnapAngleSlider').IsEnabled = [bool](Ctl 'SnapTurnCheck').IsChecked
     (Ctl 'VignetteStrengthSlider').IsEnabled = [bool](Ctl 'VignetteCheck').IsChecked
+}
+
+# Comfort presets as in PWS2. Index 3 "Custom" sets nothing - it names a state
+# that matches no preset. Sliders only where the option is on: a preset that
+# moves a greyed value changes something the player does not see.
+function Set-ComfortPreset {
+    param([int] $Index)
+    $teleport = $false; $snap = $false; $vignette = $false
+    switch ($Index) {
+        0 { }
+        1 { $snap = $true; $vignette = $true }
+        2 { $teleport = $true; $snap = $true; $vignette = $true }
+        default { return }
+    }
+    $script:ApplyingPreset = $true
+    try {
+        (Ctl 'TeleportCheck').IsChecked = $teleport
+        (Ctl 'SnapTurnCheck').IsChecked = $snap
+        (Ctl 'VignetteCheck').IsChecked = $vignette
+        if ($snap) { (Ctl 'SnapAngleSlider').Value = 45 }
+        if ($vignette) { (Ctl 'VignetteStrengthSlider').Value = 0.7 }
+    }
+    finally { $script:ApplyingPreset = $false }
+    Update-Labels
+    Mark-Dirty
+}
+
+# Which preset describes the current state? The SLIDERS COUNT TOO - comparing
+# only the ticks would claim "Gentle" while the snap angle stood at 30 (PWS2).
+function Sync-ComfortPreset {
+    $teleport = [bool](Ctl 'TeleportCheck').IsChecked
+    $snap = [bool](Ctl 'SnapTurnCheck').IsChecked
+    $vignette = [bool](Ctl 'VignetteCheck').IsChecked
+    $stock = ([Math]::Abs((Ctl 'SnapAngleSlider').Value - 45) -lt 0.01) -and ([Math]::Abs((Ctl 'VignetteStrengthSlider').Value - 0.7) -lt 0.01)
+    $index = 3
+    if (-not $teleport -and -not $snap -and -not $vignette) { $index = 0 }
+    elseif (-not $teleport -and $snap -and $vignette -and $stock) { $index = 1 }
+    elseif ($teleport -and $snap -and $vignette -and $stock) { $index = 2 }
+    $script:SuppressPreset = $true
+    try { (Ctl 'ComfortPresetBox').SelectedIndex = $index }
+    finally { $script:SuppressPreset = $false }
 }
 
 function Mark-Dirty {
@@ -673,7 +731,9 @@ function Mark-Dirty {
 
 foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider', 'UiScaleSlider',
                     'UiDistanceSlider', 'ReachSlider', 'MarkerSizeSlider',
-                    'SnapAngleSlider', 'VignetteStrengthSlider', 'MenuHoldSlider')) {
+                    'SnapAngleSlider', 'VignetteStrengthSlider', 'MenuHoldSlider',
+                    'GripXSlider', 'GripYSlider', 'GripZSlider',
+                    'RotPitchSlider', 'RotYawSlider', 'RotRollSlider')) {
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
 }
 
@@ -683,11 +743,30 @@ foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
 }
 
 foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
-                    'GesturesCheck', 'HandHitCheck', 'LoadingBlackoutCheck', 'OrangeHandsCheck')) {
+                    'GesturesCheck', 'HandHitCheck', 'LoadingBlackoutCheck', 'OrangeHandsCheck',
+                    'LaserCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
 (Ctl 'PointerColorBox').Add_SelectionChanged({ Mark-Dirty })
+(Ctl 'HandBox').Add_SelectionChanged({ Mark-Dirty })
+
+# Add_Click, NOT Add_Checked: a scripted IsChecked fires no Click, so a preset
+# does not read its own ticks back as a user change (PWS2).
+foreach ($name in @('TeleportCheck', 'SnapTurnCheck', 'VignetteCheck')) {
+    (Ctl $name).Add_Click({ if (-not $script:ApplyingPreset) { Sync-ComfortPreset } })
+}
+foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
+    (Ctl $name).Add_ValueChanged({ if (-not $script:Loading -and -not $script:ApplyingPreset) { Sync-ComfortPreset } })
+}
+(Ctl 'ComfortPresetBox').Add_SelectionChanged({
+    if ($script:Loading -or $script:SuppressPreset) { return }
+    Set-ComfortPreset -Index (Ctl 'ComfortPresetBox').SelectedIndex
+})
+
+(Ctl 'GripResetButton').Add_Click({
+    foreach ($n in @('GripXSlider', 'GripYSlider', 'GripZSlider', 'RotPitchSlider', 'RotYawSlider', 'RotRollSlider')) { (Ctl $n).Value = 0 }
+})
 (Ctl 'MirrorBox').Add_SelectionChanged({ Mark-Dirty })
 
 (Ctl 'BrowseButton').Add_Click({
@@ -753,6 +832,15 @@ foreach ($name in @('VrHandsCheck', 'SprayHapticsCheck', 'TeleportCheck',
             'GestureZones'       = Format-Bool ([bool](Ctl 'GesturesCheck').IsChecked)
             'HandHit'            = Format-Bool ([bool](Ctl 'HandHitCheck').IsChecked)
             'OrangeHands'        = Format-Bool ([bool](Ctl 'OrangeHandsCheck').IsChecked)
+            'ShowWashLaser'      = Format-Bool ([bool](Ctl 'LaserCheck').IsChecked)
+            # As a name in quotes, like every MelonPreferences string entry.
+            'Hand'               = $(if ((Ctl 'HandBox').SelectedIndex -eq 1) { '"LeftHand"' } else { '"RightHand"' })
+            'GripOffsetX'        = Format-Float ([Math]::Round((Ctl 'GripXSlider').Value, 3))
+            'GripOffsetY'        = Format-Float ([Math]::Round((Ctl 'GripYSlider').Value, 3))
+            'GripOffsetZ'        = Format-Float ([Math]::Round((Ctl 'GripZSlider').Value, 3))
+            'RotationOffsetPitch' = Format-Float ([Math]::Round((Ctl 'RotPitchSlider').Value))
+            'RotationOffsetYaw'  = Format-Float ([Math]::Round((Ctl 'RotYawSlider').Value))
+            'RotationOffsetRoll' = Format-Float ([Math]::Round((Ctl 'RotRollSlider').Value))
             'LoadingBlackout'    = Format-Bool ([bool](Ctl 'LoadingBlackoutCheck').IsChecked)
             'MenuHoldSeconds'    = Format-Float ([Math]::Round((Ctl 'MenuHoldSlider').Value, 1))
             # As names in quotes, the way MelonPreferences keeps a string entry.

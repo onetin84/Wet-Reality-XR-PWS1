@@ -70,6 +70,7 @@ $script:German = @{
     'Vignette strength' = 'Vignettenstärke'
     'Gestures (shoulder, hip, washer)' = 'Gesten (Schulter, Hüfte, Pistole)'
     'Orange gloves' = 'Orange Handschuhe'
+    'Moves and turns the washer within its own frame so that it sits where your hand holds it. In game: hold grip, X and Y on the free hand, move your washer hand to where the washer should sit, and let go. The values then show up here.' = 'Verschiebt und dreht die Pistole in ihrem eigenen Rahmen, damit sie dort sitzt, wo die Hand sie hält. Im Spiel: an der freien Hand Griff, X und Y halten, die Pistolenhand dorthin bewegen, wo die Pistole sitzen soll, loslassen. Die Werte stehen dann hier.'
     'Spraying your free hand makes it vibrate' = 'Strahl auf die freie Hand vibriert'
     'Black out while a level loads' = 'Beim Laden eines Levels abblenden'
     'Immersion hold' = 'Immersion halten'

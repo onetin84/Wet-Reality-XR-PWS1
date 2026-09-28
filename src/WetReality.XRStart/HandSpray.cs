@@ -55,7 +55,7 @@ public sealed partial class XRStart
     // In onBeforeRender nach DriveSprayHaptics (Strahl und IsWashing stehen).
     private void DriveHandSpray()
     {
-        bool want = prefHandHit.Value && writeGun && started && handL != null && !handHitFailed;
+        bool want = prefHandHit.Value && writeGun && started && OffHandModel != null && !handHitFailed;
         var we = fixWash;
         if (!want || we == null) { ReleaseHandMask(); return; }
         try
@@ -71,7 +71,7 @@ public sealed partial class XRStart
             if (hit && now >= handHitNextBuzz)
             {
                 handHitNextBuzz = now + Math.Max(0.05f, prefHandHitSeconds.Value * 0.8f);
-                try { XRController.leftHand?.TryCast<XRControllerWithRumble>()?.SendImpulse(Mathf.Clamp01(prefHandHitAmp.Value), prefHandHitSeconds.Value); } catch { }
+                try { OffCtl?.TryCast<XRControllerWithRumble>()?.SendImpulse(Mathf.Clamp01(prefHandHitAmp.Value), prefHandHitSeconds.Value); } catch { }
             }
             if (hit != handHitWasHit)
             {
@@ -89,7 +89,7 @@ public sealed partial class XRStart
         float now = Time.unscaledTime;
         if (now < handHitNextBuild) return false;
         handHitNextBuild = now + 1f;
-        var smr = handL!.GetComponentInChildren<SkinnedMeshRenderer>(true);
+        var smr = OffHandModel!.GetComponentInChildren<SkinnedMeshRenderer>(true);   // freie Hand (Handedness.cs)
         if (smr == null) { LoggerInstance.Msg("HAND-TREFFER: linke Hand ohne SkinnedMeshRenderer - warte"); return false; }
         if (handHitLayer < 0 && !PickHandLayer()) return false;
         var node = smr.transform.Find(HandHitNode);

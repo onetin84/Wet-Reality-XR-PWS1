@@ -82,7 +82,7 @@ public sealed partial class XRStart
     {
         try
         {
-            var r = XRController.rightHand?.TryCast<XRControllerWithRumble>();
+            var r = WasherCtl?.TryCast<XRControllerWithRumble>();   // Pistolenhand
             r?.SendImpulse(Mathf.Clamp01(amplitude), seconds);
         }
         catch { }

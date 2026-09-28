@@ -56,15 +56,16 @@ public sealed partial class XRStart
         LoadPose(poseR, PoseKeyR, "rechts");
         try
         {
-            var r = XRController.rightHand;
-            var l = XRController.leftHand;
+            // Rollen (1.33.0): die Pistolenhand traegt die feste Griffpose, die
+            // freie Hand folgt Trigger/Griff ihres Controllers.
+            var l = OffCtl;
             float lTrig = AxisOf(l, "trigger"), lGrip = AxisOf(l, "grip");
             bool carry = lastCarry;   // ControllerInput: Tragen erkannt
-            ApplyPose(poseR, handR, "rechts", true, false,
-                new[] { 0f, 0f, 0f, 0f, 0f });
             float g = carry ? 1f : lGrip, t = carry ? 1f : lTrig;
-            ApplyPose(poseL, handL, "links", false, true,
-                new[] { t, g, g, g, g });
+            var grip = new[] { 0f, 0f, 0f, 0f, 0f };
+            var free = new[] { t, g, g, g, g };
+            ApplyPose(poseR, handR, "rechts", !leftHanded, leftHanded, leftHanded ? free : grip);
+            ApplyPose(poseL, handL, "links", leftHanded, !leftHanded, leftHanded ? grip : free);
         }
         catch (Exception e) { LoggerInstance.Warning("HANDPOSE: " + e.GetType().Name + ": " + e.Message); }
     }

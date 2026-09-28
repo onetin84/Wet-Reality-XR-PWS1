@@ -85,8 +85,18 @@ public sealed partial class XRStart
             var camT = cam.transform;
             var toWorld = camT.rotation * Quaternion.Inverse(hmdRot);
 
-            PlaceHand(handR, XRController.rightHand, true, camT, toWorld, hmdPos, handRPos, handRRot);
-            PlaceHand(handL, XRController.leftHand, false, camT, toWorld, hmdPos, handLPos, handLRot);
+            // Linkshaendig (1.33.0): die Pistolenhand ist links und nimmt die
+            // GESPIEGELTEN Pistolenhand-Werte, die rechte die gespiegelten der freien.
+            if (!leftHanded)
+            {
+                PlaceHand(handR, XRController.rightHand, true, camT, toWorld, hmdPos, handRPos, handRRot);
+                PlaceHand(handL, XRController.leftHand, false, camT, toWorld, hmdPos, handLPos, handLRot);
+            }
+            else
+            {
+                PlaceHand(handL, XRController.leftHand, true, camT, toWorld, hmdPos, MirrorPos(handRPos), MirrorRot(handRRot));
+                PlaceHand(handR, XRController.rightHand, false, camT, toWorld, hmdPos, MirrorPos(handLPos), MirrorRot(handLRot));
+            }
 
             float now = Time.unscaledTime;
             if (now >= nextArmsCheck) { nextArmsCheck = now + 1f; HideArms(cam); }

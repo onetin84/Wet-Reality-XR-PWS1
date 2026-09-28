@@ -166,6 +166,8 @@
 // 1.29.0: Hueftgeste = Seife aus dem Holster (Seifenduese an/zurueck, UpdateNozzle; Gestures.cs).
 // 1.30.0: Strahl auf die freie Hand (Collider, Strahlmaske, Vibration; HandSpray.cs), orange Handschuhe (HandTint.cs).
 // 1.31.0: Y im Menue = Zurueck (Popup schliessen / Tablet zurueck / Tablet zu; MenuBack.cs), A im Komfortmodus aus.
+// 1.32.0: Ziellaser (WashLaser.cs, aus), Griff-Feintuning der Pistole (Grip.cs, PWS2-Schluessel).
+// 1.33.0: Linkshaender-Modus (Hand, Rollen statt Seiten; Handedness.cs), Live-Griff-Kalibrierung Griff+X+Y (Grip.cs).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -183,7 +185,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.31.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.33.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -456,6 +458,7 @@ public sealed partial class XRStart : MelonMod
         DriveVignette();  // Komfort-Vignette und Teleport-Blende vor die finale Kamera (Comfort.cs)
         DriveSprayHaptics();   // haelt auch an, wenn die Pistole aus ist (SprayHaptics.cs)
         DriveHandSpray();   // Strahl auf die freie Hand: Collider, Maske, Vibration (HandSpray.cs)
+        DriveWashLaser();   // Ziellaser, falls eingeschaltet (WashLaser.cs)
     }
 
     private void MeasurePoseGap()

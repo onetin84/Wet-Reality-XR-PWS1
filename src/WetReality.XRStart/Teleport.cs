@@ -71,8 +71,8 @@ public sealed partial class XRStart
         if (!started || !writeHead || menuActive || wheelOpen) { EndAim(false); return; }
         try
         {
-            var r = XRController.rightHand;
-            var l = XRController.leftHand;
+            var r = WasherCtl;   // Pistolenhand (Handedness.cs)
+            var l = OffCtl;
             float now = Time.unscaledTime;
             // Beim Spruehen kein Teleport (Nutzer): kein Start, Zielen bricht ab.
             if (SprayingNow) { if (tpAiming) { LoggerInstance.Msg("TELEPORT: abgebrochen - es wird gesprueht"); EndAim(false); } tpSinceR = tpSinceL = -1f; tpArmedR = tpArmedL = false; return; }
