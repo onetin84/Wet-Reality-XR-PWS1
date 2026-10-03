@@ -13,8 +13,8 @@
     <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
     <!-- Zwei Stellen tragen die Nummer: hier und MelonInfo in XRStart.cs. -->
     <Version>1.36.0</Version>
-    <AssemblyVersion>1.35.0</AssemblyVersion>
-    <FileVersion>1.35.0</FileVersion>
+    <AssemblyVersion>1.36.0</AssemblyVersion>
+    <FileVersion>1.36.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
