@@ -34,7 +34,7 @@ public sealed partial class XRStart
 
     // Gebundene Assembly; nur gemeinsam geraeumt.
     private Transform? gunAsm, gunAnchor;
-    private IntPtr gunRestFor = IntPtr.Zero;
+    private IntPtr gunRestFor = IntPtr.Zero, gunParentFor = IntPtr.Zero;
     private Vector3 gunRestPos;
     private Quaternion gunRestRot = Quaternion.identity;
     private float nextGunResolve, nextGunLog;
@@ -85,7 +85,11 @@ public sealed partial class XRStart
     // Zeiger); Assembly = der PowerWasherAssembler darunter.
     private bool ResolveGun(float now)
     {
-        if (gunAsm != null && gunAnchor != null && gunAsm.parent != null && gunAsm.parent.Pointer == gunAnchor.Pointer)
+        // Gegen den Eltern bei der Bindung, nicht gegen den Anker: im SpongeBob-DLC
+        // schlug der Ankervergleich je Frame fehl, gebunden wurde 1x/s (1.35.0-Log:
+        // 11 geschriebene Frames in 10 s) - PowerWasher_Assembly_FirstPerson ist
+        // dort also nicht direktes Kind von m_anchorPoint (Log ANKER zeigt beide).
+        if (gunAsm != null && gunAnchor != null && gunAsm.parent != null && gunAsm.parent.Pointer == gunParentFor)
             return true;
         gunAsm = gunAnchor = null;
         gunWroteLast = false;
@@ -115,7 +119,8 @@ public sealed partial class XRStart
             gunRestRot = gunAsm.localRotation;
             gunRestFor = gunAsm.Pointer;
         }
-        LoggerInstance.Msg($"PISTOLE-SCHREIBEN: gebunden {PathOf(gunAsm)} rest lp={gunRestPos.ToString("F3")} le={gunRestRot.eulerAngles.ToString("F1")}");
+        gunParentFor = gunAsm.parent == null ? IntPtr.Zero : gunAsm.parent.Pointer;
+        LoggerInstance.Msg($"PISTOLE-SCHREIBEN: gebunden {PathOf(gunAsm)} ANKER '{gunAnchor.name}' Eltern '{(gunAsm.parent == null ? "-" : gunAsm.parent.name)}' rest lp={gunRestPos.ToString("F3")} le={gunRestRot.eulerAngles.ToString("F1")}");
         return true;
     }
 

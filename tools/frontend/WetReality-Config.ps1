@@ -619,6 +619,8 @@ function Load-Settings {
     (Ctl 'GesturesCheck').IsChecked = (Read-CfgValue -Key 'GestureZones' -Fallback 'true') -eq 'true'
     (Ctl 'HandHitCheck').IsChecked = (Read-CfgValue -Key 'HandHit' -Fallback 'true') -eq 'true'
     (Ctl 'OrangeHandsCheck').IsChecked = (Read-CfgValue -Key 'OrangeHands' -Fallback 'true') -eq 'true'
+    # LevelCamera.cs (XRStart 1.36.0): MultiPass for the SpongeBob outline.
+    (Ctl 'CartoonOutlineCheck').IsChecked = (Read-CfgValue -Key 'CartoonOutline' -Fallback 'true') -eq 'true'
     # LoadingBlackout and MenuHoldSeconds are not player options any more
     # (user 28.09.): not read and never written - the mod uses its defaults.
     # Grip.cs (XRStart 1.32.0), PWS2 keys; 0 = the washer exactly on the controller.
@@ -742,7 +744,7 @@ foreach ($name in @('SnapTurnCheck', 'VignetteCheck')) {
 }
 
 foreach ($name in @('SprayHapticsCheck', 'TeleportCheck',
-                    'GesturesCheck', 'HandHitCheck', 'OrangeHandsCheck',
+                    'GesturesCheck', 'HandHitCheck', 'OrangeHandsCheck', 'CartoonOutlineCheck',
                     'LaserCheck', 'MirrorCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
@@ -853,6 +855,7 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
             'GestureZones'       = Format-Bool ([bool](Ctl 'GesturesCheck').IsChecked)
             'HandHit'            = Format-Bool ([bool](Ctl 'HandHitCheck').IsChecked)
             'OrangeHands'        = Format-Bool ([bool](Ctl 'OrangeHandsCheck').IsChecked)
+            'CartoonOutline'     = Format-Bool ([bool](Ctl 'CartoonOutlineCheck').IsChecked)
             'ShowWashLaser'      = Format-Bool ([bool](Ctl 'LaserCheck').IsChecked)
             # As a name in quotes, like every MelonPreferences string entry.
             'Hand'               = $(if ((Ctl 'HandBox').SelectedIndex -eq 1) { '"LeftHand"' } else { '"RightHand"' })

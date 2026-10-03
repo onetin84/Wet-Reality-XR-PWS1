@@ -101,6 +101,7 @@ public sealed partial class XRStart
         InitSky();
         InitPointerStyle(cat);   // PointerColor & Teleportziel (PointerStyle.cs)
         InitMenuCamera(cat);     // Hauptmenue im Headset (MenuCamera.cs)
+        InitLevelCamera(cat);    // Cartoon-Umriss / Stereo-Modus (LevelCamera.cs)
         InitSplash(cat);         // Startlogo im Headset (Splash.cs)
         InitComfort(cat);        // Snap-Turn, Vignette, Teleport-Blende (Comfort.cs)
         InitImmersion(cat);      // Menue halten = Spiel-UI aus/an (Immersion.cs)

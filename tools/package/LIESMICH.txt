@@ -122,9 +122,10 @@ STEUERUNG UND EINSTELLUNGEN
 
   Er enthält die ganze Belegung unter "Kurzanleitung öffnen" und Einstellungen
   für Pistolenhand, Drehgeschwindigkeit, Greifreichweite, Vibration, orange
-  Handschuhe, Gesten, Ziellaser, Menügröße und -abstand, Zeigerfarbe, das
-  Headsetbild auf dem Monitor, das Teleportziel, die Komfortoptionen und das
-  Griff-Feintuning. Der Knopf unten startet das Spiel über Steam.
+  Handschuhe, Gesten, Ziellaser, Cartoon-Umrisse (SpongeBob), Menügröße und
+  -abstand, Zeigerfarbe, das Headsetbild auf dem Monitor, das Teleportziel,
+  die Komfortoptionen und das Griff-Feintuning. Der Knopf unten startet das
+  Spiel über Steam.
 
   Alles Feinere steht als Klartext in <Spiel>\UserData\MelonPreferences.cfg.
   Vor dem Bearbeiten das Spiel schließen: Der Loader schreibt die Datei beim

@@ -45,6 +45,7 @@ public sealed partial class XRStart
         internal readonly HashSet<string> Params = new();
         internal readonly Dictionary<string, float> Last = new();
         internal bool LastGrip, LastOff, HaveBools;
+        internal int Resets;
     }
 
     private readonly PoseSide poseL = new(), poseR = new();
@@ -130,7 +131,18 @@ public sealed partial class XRStart
             LoggerInstance.Msg($"HANDPOSE: {label} Animator gebunden - Avatar {(av == null ? "KEINER" : $"'{av.name}' human {av.isHuman} valid {av.isValid}")}, Parameter [{string.Join(", ", names)}]");
         }
 
-        if (!side.HaveBools || side.LastGrip != grip || side.LastOff != offHand)
+        // Gegen den Animator vergleichen, nicht nur gegen den eigenen Stand: wird
+        // die Hand deaktiviert, setzt Unity die Parameter zurueck - Grip fiel auf
+        // false, der Cache glaubte true (SpongeBob 1.35.1: rechte Hand offen).
+        bool reset = side.HaveBools &&
+            ((side.Params.Contains("Grip") && anim.GetBool("Grip") != side.LastGrip) ||
+             (side.Params.Contains("IsOffhand") && anim.GetBool("IsOffhand") != side.LastOff));
+        if (reset)
+        {
+            if (++side.Resets <= 5) LoggerInstance.Msg($"HANDPOSE: {label} Parameter vom Animator zurueckgesetzt ({side.Resets}.) - neu gesetzt");
+            side.Last.Clear();
+        }
+        if (reset || !side.HaveBools || side.LastGrip != grip || side.LastOff != offHand)
         {
             if (side.Params.Contains("Grip")) anim.SetBool("Grip", grip);
             if (side.Params.Contains("IsOffhand")) anim.SetBool("IsOffhand", offHand);
@@ -141,7 +153,7 @@ public sealed partial class XRStart
             var name = FingerParams[i];
             if (!side.Params.Contains(name)) continue;
             float v = Mathf.Clamp01(fingers[i]);
-            if (side.Last.TryGetValue(name, out var was) && Math.Abs(was - v) < 0.02f) continue;
+            if (side.Last.TryGetValue(name, out var was) && Math.Abs(was - v) < 0.02f && Math.Abs(anim.GetFloat(name) - v) < 0.02f) continue;
             anim.SetFloat(name, v);
             side.Last[name] = v;
         }

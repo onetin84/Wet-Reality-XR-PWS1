@@ -122,9 +122,10 @@ CONTROLS AND SETTINGS
 
   It has the full control layout under "Open quick guide", and settings for the
   washer hand, turn speed, pickup reach, vibration, orange gloves, gestures,
-  the aiming laser, menu size and distance, pointer colour, the headset view
-  on the monitor, the teleport target, the comfort options and the grip
-  fine-tuning. The button at the bottom starts the game through Steam.
+  the aiming laser, cartoon outlines (SpongeBob), menu size and distance,
+  pointer colour, the headset view on the monitor, the teleport target, the
+  comfort options and the grip fine-tuning. The button at the bottom starts
+  the game through Steam.
 
   Everything finer than that sits in <game>\UserData\MelonPreferences.cfg as
   plain text. Close the game before editing it: the loader rewrites that file

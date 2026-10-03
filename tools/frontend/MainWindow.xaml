@@ -594,6 +594,10 @@
                                 <!-- XRStart 1.30.0: OrangeHands wie PWS2. -->
                                 <CheckBox x:Name="OrangeHandsCheck" Margin="0,4,0,8"
                                           IsChecked="True" Content="Orange gloves" />
+                                <!-- XRStart 1.36.0: CartoonOutline (Vorgabe an) - MultiPass,
+                                     damit der SpongeBob-Umriss in VR laeuft. -->
+                                <CheckBox x:Name="CartoonOutlineCheck" Margin="0,0,0,8"
+                                          IsChecked="True" Content="Cartoon outlines (SpongeBob), costs frame rate" />
                                 <!-- XRStart 1.32.0: ShowWashLaser (Vorgabe aus, wie PWS2). -->
                                 <CheckBox x:Name="LaserCheck" Margin="0,0,0,8"
                                           Content="Show aiming laser" />

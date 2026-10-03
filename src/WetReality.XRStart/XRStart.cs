@@ -186,7 +186,7 @@ using UnityEngine.XR;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 
-[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.35.0", "Tino")]
+[assembly: MelonInfo(typeof(WetReality.XRStart.XRStart), "Wet Reality XRStart", "1.36.0", "Tino")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator")]
 
 namespace WetReality.XRStart;
@@ -573,6 +573,7 @@ public sealed partial class XRStart : MelonMod
         TickDevTools();
         TickUiProbe();
         TickMenuCamera();   // vor TickVrUi: im Hauptmenue die eigene Kamera (MenuCamera.cs)
+        TickLevelCamera();  // Umriss-Effekt unter XR aus, SpongeBob-DLC (LevelCamera.cs)
         TickSplashArm();    // Startlogo auf dem XR-Start spannen (Splash.cs)
         TickVrUi();
         TickImmersion();    // Spiel-UI aus im Immersionsmodus, Menues bleiben sichtbar (Immersion.cs)
@@ -884,6 +885,7 @@ public sealed partial class XRStart : MelonMod
         LoggerInstance.Msg("vor dem Start: currentRenderPipeline=" + pipeline);
         lastCameraSignature = "";
         ReportCameras("vor dem Start");
+        ApplyStereoMode();   // MultiPass fuer den Cartoon-Umriss (LevelCamera.cs)
 
         try
         {
@@ -928,6 +930,7 @@ public sealed partial class XRStart : MelonMod
         var manager = DescribeManager("vor dem Stopp (" + why + ")");
         started = false;
         reportUntil = 0f;
+        RestoreOutline();   // Umriss-Effekt wieder an (LevelCamera.cs)
         if (manager == null) return;
         try
         {
@@ -1169,7 +1172,7 @@ public sealed partial class XRStart : MelonMod
             else
             {
                 var stack = data.renderType == CameraRenderType.Base ? data.cameraStack : null;
-                urp = $"{data.renderType}, Stapel {(stack == null ? 0 : stack.Count)}";
+                urp = $"{data.renderType}, Stapel {(stack == null ? 0 : stack.Count)}, allowXR={data.allowXRRendering}";
             }
         }
         catch (Exception e)
